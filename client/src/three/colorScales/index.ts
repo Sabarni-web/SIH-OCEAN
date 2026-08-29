@@ -1,0 +1,101 @@
+import * as THREE from 'three';
+import { OCEAN_VARIABLES } from '../../data/variables';
+
+export interface ColorScaleConfig {
+  stops: { value: number; color: string }[];
+}
+
+export const COLOR_SCALES: Record<string, ColorScaleConfig> = {
+  thermal: {
+    stops: [
+      { value: 0, color: '#0000ff' }, // Deep Blue
+      { value: 0.25, color: '#00ffff' }, // Cyan
+      { value: 0.5, color: '#00ff00' }, // Green
+      { value: 0.75, color: '#ffff00' }, // Yellow
+      { value: 1, color: '#ff0000' }, // Red
+    ]
+  },
+  haline: {
+    stops: [
+      { value: 0, color: '#e0f3db' },
+      { value: 0.5, color: '#a8ddb5' },
+      { value: 1, color: '#43a2ca' },
+    ]
+  },
+  algae: {
+    stops: [
+      { value: 0, color: '#000033' },
+      { value: 0.2, color: '#132B43' },
+      { value: 0.5, color: '#56B1F7' },
+      { value: 1, color: '#ffffcc' },
+    ]
+  },
+  velocity: {
+    stops: [
+      { value: 0, color: '#440154' },
+      { value: 0.5, color: '#21918c' },
+      { value: 1, color: '#fde725' },
+    ]
+  },
+  phase: {
+    stops: [
+      { value: 0, color: '#ff0000' },
+      { value: 0.33, color: '#00ff00' },
+      { value: 0.66, color: '#0000ff' },
+      { value: 1, color: '#ff0000' },
+    ]
+  },
+  oxygen: {
+    stops: [
+      { value: 0, color: '#4b0082' },
+      { value: 0.5, color: '#00ffff' },
+      { value: 1, color: '#ffffff' },
+    ]
+  },
+  depth: {
+    stops: [
+      { value: 0, color: '#ffffff' },
+      { value: 0.5, color: '#0088ff' },
+      { value: 1, color: '#000033' },
+    ]
+  }
+};
+
+// Evaluate a gradient directly using min/max
+export const evaluateColor = (value: number, min: number, max: number, config: ColorScaleConfig): THREE.Color => {
+  const { stops } = config;
+  
+  // Clamp value
+  const clamped = Math.max(min, Math.min(max, value));
+  // Normalize
+  const t = max === min ? 0 : (clamped - min) / (max - min);
+
+  // Find appropriate stops
+  let lowerStop = stops[0];
+  let upperStop = stops[stops.length - 1];
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (t >= stops[i].value && t <= stops[i+1].value) {
+      lowerStop = stops[i];
+      upperStop = stops[i+1];
+      break;
+    }
+  }
+
+  // Interpolate
+  const localT = (t - lowerStop.value) / (upperStop.value - lowerStop.value || 1);
+  const color1 = new THREE.Color(lowerStop.color);
+  const color2 = new THREE.Color(upperStop.color);
+  
+  return color1.lerp(color2, localT);
+};
+
+// Generic color getter
+export const getVariableColor = (variableId: string, value: number): THREE.Color => {
+  const variable = OCEAN_VARIABLES[variableId];
+  if (!variable) return new THREE.Color('#ffffff');
+  const scale = COLOR_SCALES[variable.colorScale];
+  if (!scale) return new THREE.Color('#ffffff');
+  
+  return evaluateColor(value, variable.min, variable.max, scale);
+};
