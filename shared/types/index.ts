@@ -103,6 +103,7 @@ export interface Glider extends Observation {
 export interface CTDObservation extends Observation {
   type: 'ctd';
   cruiseId: string;
+  stationNumber?: number;
 }
 
 export interface Mooring extends Observation {
@@ -168,8 +169,65 @@ export interface UploadDataset {
   type: string;
 }
 
+export interface CurrentVectorPoint {
+  latitude: number;
+  longitude: number;
+  speed: number; // in m/s
+  direction: number; // in degrees (0 - 360)
+  u: number; // zonal velocity (m/s)
+  v: number; // meridional velocity (m/s)
+  windSpeed?: number | undefined; // 10m wind speed (m/s)
+  windDirection?: number | undefined; // 10m wind direction (deg)
+}
+
+export interface SSTGridPoint {
+  latitude: number;
+  longitude: number;
+  temperature: number; // °C
+}
+
+export interface InstrumentSnapshot {
+  timestamp: string;
+  label: string;
+  argos: {
+    wmoId: string;
+    latitude: number;
+    longitude: number;
+    depth: number;
+    temperature: number;
+    salinity: number;
+  }[];
+  activeGliderIndices: number[];   // indices into the glider array
+  activeCTDIds: string[];          // IDs of CTD stations visible at this time
+  activeBGCIds: string[];          // IDs of BGC floats visible at this time
+}
+
+export interface TimelineFrame {
+  timestamp: string;           // ISO string: "2026-08-24T06:00:00Z"
+  label: string;               // Human-readable: "Aug 24, 06:00 UTC"
+  vectors: CurrentVectorPoint[]; // 37 grid nodes with u,v,speed,direction
+  sst?: SSTGridPoint[];        // 37 grid nodes with real satellite SST (°C)
+}
+
+export interface TimelineResponse {
+  frames: TimelineFrame[];
+  instrumentSnapshots?: InstrumentSnapshot[];
+  meta: {
+    startDate: string;
+    endDate: string;
+    totalDays: number;
+    stepHours: number;        // e.g. 6 for "every 6 hours"
+    totalFrames: number;
+    samplingStrategy: string; // e.g. "6-hourly", "daily", "weekly", "monthly"
+    source: string;
+    dataAvailable?: boolean;
+  };
+}
+
 export interface APIResponse<T> {
   data: T;
   meta?: any;
   error?: string;
 }
+
+

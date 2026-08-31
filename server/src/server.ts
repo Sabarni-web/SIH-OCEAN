@@ -3,8 +3,12 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
-// Load environment variables
-dotenv.config({ path: '../.env' });
+import path from 'path';
+
+// Load environment variables from workspace root or local directory
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -42,6 +46,7 @@ import comparisonRoutes from './routes/comparison.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import alertRoutes from './routes/alert.routes';
 import observationRoutes from './routes/observation.routes';
+import currentsRoutes from './routes/currents.routes';
 
 // Mock routes setup (Placeholder for later)
 const apiRouter = express.Router();
@@ -51,6 +56,7 @@ apiRouter.use('/comparison', comparisonRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/alerts', alertRoutes);
 apiRouter.use('/observations', observationRoutes);
+apiRouter.use('/currents', currentsRoutes);
 // apiRouter.get('/model', (req, res) => res.json({ message: 'Model data' })); // TODO: integrate model route
 
 

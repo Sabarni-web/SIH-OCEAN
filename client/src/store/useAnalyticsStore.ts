@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { currentsService } from '../services/api';
+import type { CurrentVectorPoint } from '../../../shared/types';
 
 interface AnalyticsState {
   // Modes
@@ -30,6 +32,11 @@ interface AnalyticsState {
   setVectorDensity: (val: string) => void;
   particleSpeed: number;
   setParticleSpeed: (val: number) => void;
+
+  // Live Satellite Ocean Currents
+  currentVectors: CurrentVectorPoint[];
+  currentsLoading: boolean;
+  fetchCurrentVectors: (dateStr?: string) => Promise<void>;
 }
 
 export const useAnalyticsStore = create<AnalyticsState>((set) => ({
@@ -60,4 +67,20 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   setVectorDensity: (val) => set({ vectorDensity: val }),
   particleSpeed: 1,
   setParticleSpeed: (val) => set({ particleSpeed: val }),
+
+  currentVectors: [],
+  currentsLoading: false,
+  fetchCurrentVectors: async (dateStr?: string) => {
+    try {
+      set({ currentsLoading: true });
+      const res = await currentsService.getCurrents(dateStr);
+      if (res && res.data) {
+        set({ currentVectors: res.data });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch live ocean currents:', err);
+    } finally {
+      set({ currentsLoading: false });
+    }
+  }
 }));

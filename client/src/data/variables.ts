@@ -1,10 +1,10 @@
-﻿import type { OceanVariableDefinition } from '../../../shared/types/index';
+import type { OceanVariableDefinition } from '../../../shared/types/index';
 
 export const OCEAN_VARIABLES: Record<string, OceanVariableDefinition> = {
   temperature: {
     id: 'temperature',
     name: 'Temperature',
-    unit: 'Â°C',
+    unit: '°C',
     description: 'Sea water temperature at selected depth and time.',
     min: 0,
     max: 32,
@@ -46,7 +46,7 @@ export const OCEAN_VARIABLES: Record<string, OceanVariableDefinition> = {
   currentDirection: {
     id: 'currentDirection',
     name: 'Current Direction',
-    unit: 'Â°',
+    unit: '°',
     description: 'Ocean current direction derived from u and v components.',
     min: 0,
     max: 360,
@@ -60,7 +60,7 @@ export const OCEAN_VARIABLES: Record<string, OceanVariableDefinition> = {
   chlorophyll: {
     id: 'chlorophyll',
     name: 'Chlorophyll-a',
-    unit: 'mg/mÂ³',
+    unit: 'mg/m³',
     description: 'Chlorophyll-a concentration indicating phytoplankton biomass.',
     min: 0,
     max: 5,
@@ -74,7 +74,7 @@ export const OCEAN_VARIABLES: Record<string, OceanVariableDefinition> = {
   dissolvedOxygen: {
     id: 'dissolvedOxygen',
     name: 'Dissolved Oxygen',
-    unit: 'Âµmol/kg',
+    unit: 'µmol/kg',
     description: 'Concentration of oxygen dissolved in the water column.',
     min: 0,
     max: 350,

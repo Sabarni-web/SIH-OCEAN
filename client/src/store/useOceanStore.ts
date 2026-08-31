@@ -72,7 +72,7 @@ export const useOceanStore = create<OceanState>((set, get) => ({
   visualizationMode: '3d',
   setVisualizationMode: (mode) => set({ visualizationMode: mode }),
 
-  dataMode: 'demo',
+  dataMode: 'api',
   setDataMode: (mode) => set({ dataMode: mode }),
   
   activeDatasetId: null,

@@ -49,12 +49,21 @@ export const GliderRenderer: React.FC<Props> = ({ data }) => {
             </mesh>
 
             {isSelected && (
-              <Html position={[cx, cy + 1, cz]} center className="pointer-events-none">
-                <div className="bg-surfaceElevated border border-green-400/50 text-white p-2 rounded text-xs shadow-lg backdrop-blur-md whitespace-nowrap z-50">
-                  <p className="font-bold text-green-400 mb-1 border-b border-green-400/30 pb-1">GLIDER</p>
-                  <p>ID: {glider.deploymentId}</p>
-                  <p>Depth: {currentPt.depth.toFixed(1)}m</p>
-                  <p>Temp: {currentPt.variables.temperature?.toFixed(1)}°C</p>
+              <Html position={[cx, cy + 1, cz]} center className="pointer-events-auto z-50">
+                <div className="bg-surfaceElevated/95 border border-green-400/60 text-white p-2.5 rounded-lg text-xs shadow-2xl backdrop-blur-md whitespace-nowrap relative">
+                  <div className="flex items-center justify-between gap-3 border-b border-green-400/30 pb-1 mb-1.5">
+                    <span className="font-bold text-green-400 tracking-wider uppercase text-[11px]">GLIDER</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); selectObservation(null); }}
+                      className="text-textSecondary hover:text-white p-0.5 hover:bg-white/10 rounded transition-colors text-xs font-bold leading-none"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="font-mono text-[11px]">ID: <span className="text-white font-bold">{glider.deploymentId}</span></p>
+                  <p className="text-textSecondary text-[11px]">Depth: <span className="text-cyan-300 font-bold">{currentPt.depth.toFixed(1)}m</span></p>
+                  <p className="text-textSecondary text-[11px]">Temp: <span className="text-emerald-300 font-bold">{currentPt.variables.temperature?.toFixed(1)}°C</span></p>
                 </div>
               </Html>
             )}

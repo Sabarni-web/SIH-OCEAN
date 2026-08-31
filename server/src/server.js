@@ -7,8 +7,11 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const mongoose_1 = __importDefault(require("mongoose"));
-// Load environment variables
-dotenv_1.default.config({ path: '../.env' });
+const path_1 = __importDefault(require("path"));
+// Load environment variables from workspace root or local directory
+dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../.env') });
+dotenv_1.default.config({ path: path_1.default.resolve(process.cwd(), '.env') });
+dotenv_1.default.config({ path: path_1.default.resolve(process.cwd(), '../.env') });
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
 // Connect to MongoDB
@@ -41,6 +44,7 @@ const comparison_routes_1 = __importDefault(require("./routes/comparison.routes"
 const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
 const alert_routes_1 = __importDefault(require("./routes/alert.routes"));
 const observation_routes_1 = __importDefault(require("./routes/observation.routes"));
+const currents_routes_1 = __importDefault(require("./routes/currents.routes"));
 // Mock routes setup (Placeholder for later)
 const apiRouter = express_1.default.Router();
 apiRouter.use('/datasets', dataset_routes_1.default);
@@ -48,6 +52,7 @@ apiRouter.use('/comparison', comparison_routes_1.default);
 apiRouter.use('/analytics', analytics_routes_1.default);
 apiRouter.use('/alerts', alert_routes_1.default);
 apiRouter.use('/observations', observation_routes_1.default);
+apiRouter.use('/currents', currents_routes_1.default);
 // apiRouter.get('/model', (req, res) => res.json({ message: 'Model data' })); // TODO: integrate model route
 app.use('/api', apiRouter);
 // Centralized error handling

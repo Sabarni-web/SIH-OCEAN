@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Play, RotateCcw, Thermometer, Wind, Droplets, Clock, ArrowDown, Search } from 'lucide-react';
+import { Play, RotateCcw, Thermometer, Wind, Droplets, Clock, ArrowDown, Search, Calendar, Check, RefreshCw, History } from 'lucide-react';
 import { useOceanStore } from '../store/useOceanStore';
-import { useObservationStore } from '../store/useObservationStore';
+import { useObservationStore, type DatePreset } from '../store/useObservationStore';
+import { useReplayStore } from '../store/useReplayStore';
 
 export const GlobalOceanControls: React.FC = () => {
   const { 
@@ -15,8 +16,56 @@ export const GlobalOceanControls: React.FC = () => {
     setSelectedTime
   } = useOceanStore();
 
-  const { observations, selectObservation } = useObservationStore();
+  const { 
+    observations, 
+    selectObservation, 
+    datePreset, 
+    startDate, 
+    endDate, 
+    setDateFilter,
+    loading: obsLoading 
+  } = useObservationStore();
+
+  const {
+    replayMode,
+    replayLoading,
+    replayFrames,
+    currentFrameIndex,
+    startReplay,
+    stopReplay
+  } = useReplayStore();
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customStart, setCustomStart] = useState('2024-05-01');
+  const [customEnd, setCustomEnd] = useState('2024-05-31');
+
+  const handleTriggerReplay = async () => {
+    if (replayMode) {
+      stopReplay();
+      return;
+    }
+
+    if (isPlaying) {
+      togglePlay();
+    }
+
+    let sDate = '';
+    let eDate = new Date().toISOString().slice(0, 10);
+
+    if (datePreset === '7d') {
+      sDate = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    } else if (datePreset === '30d') {
+      sDate = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    } else if (datePreset === 'custom') {
+      sDate = startDate || customStart;
+      eDate = endDate || customEnd;
+    }
+
+    if (sDate && eDate) {
+      await startReplay(sDate, eDate);
+    }
+  };
 
   // Time animation effect
   useEffect(() => {
@@ -41,12 +90,18 @@ export const GlobalOceanControls: React.FC = () => {
     );
     if (match) {
       selectObservation(match.id);
-      window.dispatchEvent(new Event('reset-camera')); // optionally trigger a camera focus
+      window.dispatchEvent(new Event('reset-camera'));
     }
   };
 
+  const handleApplyCustomDate = async () => {
+    if (!customStart || !customEnd) return;
+    await setDateFilter('custom', customStart, customEnd);
+    setShowDatePicker(false);
+  };
+
   return (
-    <div className="glass-panel-elevated p-4 rounded-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+    <div className="glass-panel-elevated p-4 rounded-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4 relative z-30">
       
       {/* Region & Variable */}
       <div className="flex items-center gap-4 w-full md:w-auto">
@@ -79,7 +134,7 @@ export const GlobalOceanControls: React.FC = () => {
       </div>
 
       {/* Depth Slider */}
-      <div className="flex-1 w-full flex flex-col px-4 md:px-8 max-w-2xl">
+      <div className="flex-1 w-full flex flex-col px-4 md:px-6 max-w-2xl">
         <div className="flex justify-between mb-1">
           <label className="text-xs text-textSecondary uppercase tracking-wider font-semibold flex items-center gap-1">
             <ArrowDown className="w-3 h-3" /> Depth
@@ -101,37 +156,163 @@ export const GlobalOceanControls: React.FC = () => {
         </div>
       </div>
 
-      {/* Time & Play Controls */}
-      <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-        <div className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-1.5">
-          <Clock className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">15 Nov 2024 • 12:00 UTC</span>
+      {/* Time & Temporal Date Range Controls */}
+      <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+        
+        {/* Date Filter Dropdown Button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className="flex items-center gap-1.5 bg-background border border-border/70 hover:border-primary px-3 py-1.5 rounded-md text-xs font-mono text-white transition-colors"
+            title="Filter by Date Range"
+          >
+            <Calendar className="w-3.5 h-3.5 text-primary" />
+            <span className="font-semibold">
+              {datePreset === 'live' && '⚡ Live Fleet'}
+              {datePreset === '7d' && '📅 Past 7 Days'}
+              {datePreset === '30d' && '📅 Past 30 Days'}
+              {datePreset === 'custom' && `${startDate} → ${endDate}`}
+            </span>
+            {obsLoading && <RefreshCw className="w-3 h-3 text-primary animate-spin ml-1" />}
+          </button>
+
+          {/* Date Picker Popover */}
+          {showDatePicker && (
+            <div className="absolute right-0 top-10 w-72 bg-[#0c1524] border border-border/80 shadow-2xl rounded-xl p-4 z-50 text-xs backdrop-blur-xl">
+              <div className="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
+                <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-primary" /> Date Filter
+                </span>
+                <span className="text-[10px] text-textSecondary">
+                  {observations.length} sensors
+                </span>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="grid grid-cols-3 gap-1.5 mb-3">
+                <button
+                  onClick={() => { setDateFilter('live'); setShowDatePicker(false); }}
+                  className={`py-1 px-2 rounded font-medium border text-center transition-all ${
+                    datePreset === 'live' 
+                      ? 'bg-primary/20 text-primary border-primary/50 font-bold' 
+                      : 'bg-surfaceElevated border-border/40 text-textSecondary hover:text-white'
+                  }`}
+                >
+                  ⚡ Live
+                </button>
+                <button
+                  onClick={() => { setDateFilter('7d'); setShowDatePicker(false); }}
+                  className={`py-1 px-2 rounded font-medium border text-center transition-all ${
+                    datePreset === '7d' 
+                      ? 'bg-primary/20 text-primary border-primary/50 font-bold' 
+                      : 'bg-surfaceElevated border-border/40 text-textSecondary hover:text-white'
+                  }`}
+                >
+                  7 Days
+                </button>
+                <button
+                  onClick={() => { setDateFilter('30d'); setShowDatePicker(false); }}
+                  className={`py-1 px-2 rounded font-medium border text-center transition-all ${
+                    datePreset === '30d' 
+                      ? 'bg-primary/20 text-primary border-primary/50 font-bold' 
+                      : 'bg-surfaceElevated border-border/40 text-textSecondary hover:text-white'
+                  }`}
+                >
+                  30 Days
+                </button>
+              </div>
+
+              {/* Custom Date Range Picker */}
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <span className="text-[11px] font-semibold text-textSecondary">Custom Range:</span>
+                <div className="grid grid-cols-2 gap-2 font-mono">
+                  <div>
+                    <label className="text-[10px] text-textSecondary block mb-0.5">Start Date</label>
+                    <input 
+                      type="date"
+                      value={customStart}
+                      onChange={(e) => setCustomStart(e.target.value)}
+                      className="w-full bg-background border border-border rounded px-2 py-1 text-white text-[11px] focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-textSecondary block mb-0.5">End Date</label>
+                    <input 
+                      type="date"
+                      value={customEnd}
+                      onChange={(e) => setCustomEnd(e.target.value)}
+                      className="w-full bg-background border border-border rounded px-2 py-1 text-white text-[11px] focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleApplyCustomDate}
+                  className="w-full mt-2 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 rounded font-semibold transition-colors flex items-center justify-center gap-1"
+                >
+                  <Check className="w-3.5 h-3.5" /> Apply Temporal Range
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* UTC Simulation Clock / Replay Clock */}
+        <div className="flex items-center gap-2 bg-background border border-border rounded-md px-3 py-1.5 font-mono">
+          <Clock className={`w-4 h-4 ${replayMode ? 'text-amber-400' : 'text-primary'} animate-pulse`} />
+          <span className="text-xs font-semibold text-white">
+            {replayMode && replayFrames[currentFrameIndex]
+              ? replayFrames[currentFrameIndex].label
+              : `${new Date(Date.now() + selectedTime * 3600 * 1000).toUTCString().slice(5, 22)} UTC`}
+          </span>
+          <span className={`text-[10px] ${
+            replayMode 
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' 
+              : 'bg-primary/20 text-primary border-primary/30'
+          } border px-1.5 py-0.2 rounded font-bold`}>
+            {replayMode ? 'REPLAY' : selectedTime === 0 ? 'NOW' : `+${selectedTime}h`}
+          </span>
         </div>
         
+        {/* Play, Replay & Reset Buttons */}
         <div className="flex items-center gap-2">
-          
-          <form onSubmit={handleSearch} className="relative hidden md:flex items-center">
-            <Search className="w-4 h-4 text-textSecondary absolute left-2" />
-            <input 
-              type="text" 
-              placeholder="Search ID..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-background border border-border rounded-md pl-8 pr-2 py-1.5 text-sm text-white focus:outline-none focus:border-primary w-32 transition-all"
-            />
-          </form>
-
+          {/* Forward Forecast Play Button */}
           <button 
-            onClick={togglePlay}
-            className="flex items-center justify-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50 px-4 py-1.5 rounded-md transition-all shadow-[0_0_10px_rgba(0,212,255,0.2)]"
+            onClick={() => {
+              if (replayMode) stopReplay();
+              togglePlay();
+            }}
+            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+              isPlaying
+                ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)]'
+                : 'bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50'
+            }`}
+            title={isPlaying ? 'Pause Forecast Simulation' : 'Run 24h Forward Forecast'}
           >
             {isPlaying ? (
-              <span className="w-4 h-4 flex items-center justify-center font-bold">||</span>
+              <span className="w-3.5 h-3.5 flex items-center justify-center font-bold">||</span>
             ) : (
-              <Play className="w-4 h-4" />
+              <Play className="w-3.5 h-3.5 fill-primary" />
             )}
-            <span className="text-sm font-bold">{isPlaying ? 'Pause' : 'Play'}</span>
+            <span>{isPlaying ? 'Pause' : 'Forecast'}</span>
           </button>
+
+          {/* Historical Temporal Replay Button (Available for 7d, 30d, and Custom ranges) */}
+          {datePreset !== 'live' && (
+            <button
+              onClick={handleTriggerReplay}
+              disabled={replayLoading}
+              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                replayMode
+                  ? 'bg-amber-500/30 text-amber-300 border border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.35)]'
+                  : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40'
+              }`}
+              title="Replay Historical Current Flow Over Time"
+            >
+              <History className={`w-3.5 h-3.5 ${replayLoading ? 'animate-spin' : ''}`} />
+              <span>{replayLoading ? 'Loading...' : replayMode ? 'Replaying' : 'Replay'}</span>
+            </button>
+          )}
           
           <button 
             onClick={() => window.dispatchEvent(new Event('reset-camera'))}
@@ -146,3 +327,4 @@ export const GlobalOceanControls: React.FC = () => {
     </div>
   );
 };
+
