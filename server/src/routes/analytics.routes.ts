@@ -4,6 +4,7 @@ import { getStatistics, getHistogram, getCrossSection } from '../controllers/ana
 const router = Router();
 
 router.get('/statistics', getStatistics);
+router.get('/stats', getStatistics);
 router.get('/histogram', getHistogram);
 router.get('/cross-section', getCrossSection);
 

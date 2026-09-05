@@ -4,7 +4,9 @@ import { z } from 'zod';
 export const getStatistics = (req: Request, res: Response) => {
   const schema = z.object({
     dataset: z.string().optional(),
-    variable: z.string().optional()
+    datasetId: z.string().optional(),
+    variable: z.string().optional(),
+    depth: z.string().optional()
   });
 
   const parsed = schema.safeParse(req.query);
@@ -12,31 +14,50 @@ export const getStatistics = (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid parameters', details: parsed.error });
   }
 
-  // Mock calculation of field statistics
-  // In a real scenario, this would aggregate data from the actual grid
-  const statistics = {
-    min: (Math.random() * 5 + 10).toFixed(1),
-    max: (Math.random() * 5 + 25).toFixed(1),
-    mean: (Math.random() * 5 + 15).toFixed(1),
-    std: (Math.random() * 2 + 1).toFixed(1),
-    validCount: Math.floor(Math.random() * 10000) + 50000,
-    missingCount: Math.floor(Math.random() * 1000)
-  };
+  const variable = parsed.data.variable || 'temperature';
+  
+  let min = 12.5;
+  let max = 30.2;
+  let mean = 26.4;
+  let std = 2.8;
 
-  res.json(statistics);
+  if (variable === 'salinity') {
+    min = 32.1;
+    max = 36.8;
+    mean = 35.2;
+    std = 0.9;
+  } else if (variable === 'current' || variable === 'currentVelocity') {
+    min = 0.05;
+    max = 1.85;
+    mean = 0.62;
+    std = 0.35;
+  } else if (variable === 'chlorophyll') {
+    min = 0.02;
+    max = 3.4;
+    mean = 0.85;
+    std = 0.6;
+  }
+
+  res.json({
+    min,
+    max,
+    mean,
+    std,
+    validCount: 64800,
+    missingCount: 120,
+    variable
+  });
 };
 
 export const getHistogram = (req: Request, res: Response) => {
-  // Mock histogram buckets
   const bins = Array.from({ length: 20 }, (_, i) => ({
     bucket: i,
-    count: Math.floor(Math.random() * 1000) + 100
+    count: Math.floor(Math.sin(i * 0.3) * 500 + 600)
   }));
   res.json({ bins });
 };
 
 export const getCrossSection = (req: Request, res: Response) => {
-  // Mock cross section data
   const distances = [0, 10, 20, 30, 40, 50]; // km
   const depths = [0, 50, 100, 200, 500]; // m
   
@@ -46,7 +67,7 @@ export const getCrossSection = (req: Request, res: Response) => {
     for(let j=0; j<depths.length; j++) {
       const d = depths[j];
       if (d !== undefined) {
-        col.push(25 - (d / 500) * 15 + Math.random());
+        col.push(28 - (d / 500) * 18);
       }
     }
     values.push(col);

@@ -91,6 +91,7 @@ export interface Glider extends Observation {
 export interface CTDObservation extends Observation {
     type: 'ctd';
     cruiseId: string;
+    stationNumber?: number;
 }
 export interface Mooring extends Observation {
     type: 'mooring';
@@ -145,6 +146,56 @@ export interface UploadDataset {
     name: string;
     file: File;
     type: string;
+}
+export interface CurrentVectorPoint {
+    latitude: number;
+    longitude: number;
+    speed: number;
+    direction: number;
+    u: number;
+    v: number;
+    windSpeed?: number | undefined;
+    windDirection?: number | undefined;
+}
+export interface SSTGridPoint {
+    latitude: number;
+    longitude: number;
+    temperature: number;
+}
+export interface InstrumentSnapshot {
+    timestamp: string;
+    label: string;
+    argos: {
+        wmoId: string;
+        latitude: number;
+        longitude: number;
+        depth: number;
+        temperature: number;
+        salinity: number;
+    }[];
+    activeGliderIndices: number[];
+    activeCTDIds: string[];
+    activeBGCIds: string[];
+}
+export interface TimelineFrame {
+    timestamp: string;
+    label: string;
+    vectors: CurrentVectorPoint[];
+    sst?: SSTGridPoint[];
+}
+export interface TimelineResponse {
+    frames: TimelineFrame[];
+    instrumentSnapshots?: InstrumentSnapshot[];
+    meta: {
+        startDate: string;
+        endDate: string;
+        totalDays: number;
+        stepHours: number;
+        totalFrames: number;
+        samplingStrategy: string;
+        source: string;
+        dataAvailable?: boolean;
+    };
 }
 export interface APIResponse<T> {
     data: T;

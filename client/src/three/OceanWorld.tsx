@@ -1,123 +1,263 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid, Html } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 
 import { useOceanStore } from '../store/useOceanStore';
+import { useObservationStore } from '../store/useObservationStore';
 import { useAnalyticsStore } from '../store/useAnalyticsStore';
 import { useMonitoringStore } from '../store/useMonitoringStore';
+import { ObservationSystem } from './ObservationSystem';
+import { LandmassRenderer } from './LandmassRenderer';
+import { VerticalSection } from './VerticalSection';
+import { Isosurface } from './Isosurface';
+import { Bathymetry } from './Bathymetry';
+import { VectorFieldRenderer } from './VectorFieldRenderer';
+import { ParticleFlowRenderer } from './ParticleFlowRenderer';
+import { DataProbeRenderer } from './DataProbeRenderer';
+import { getVariableColor } from './colorScales';
+import { OCEAN_VARIABLES } from '../data/variables';
+import { useReplayStore } from '../store/useReplayStore';
+import type { SSTGridPoint } from '../../../shared/types';
+import { SCENE_DIMENSIONS, geoToWorld, depthToWorld } from './utils/coordinates';
+
+function interpolateSST(sstGrid: SSTGridPoint[], targetLat: number, targetLon: number): number {
+  let weightedSum = 0;
+  let weightTotal = 0;
+  for (let j = 0; j < sstGrid.length; j++) {
+    const node = sstGrid[j];
+    const dLat = node.latitude - targetLat;
+    const dLon = node.longitude - targetLon;
+    const distSq = dLat * dLat + dLon * dLon;
+    if (distSq < 0.04) return node.temperature;
+    const weight = 1 / distSq;
+    weightedSum += node.temperature * weight;
+    weightTotal += weight;
+  }
+  return weightTotal > 0 ? weightedSum / weightTotal : 27.5;
+}
+
+
+
+const AlertMarkerItem: React.FC<{ alert: any }> = ({ alert }) => {
+  const [hovered, setHovered] = useState(false);
+  const [x, z] = geoToWorld(alert.location!.lat, alert.location!.lon);
+  const position: [number, number, number] = [x, 0.4, z];
+  const color = alert.severity === 'CRITICAL' ? '#ff3344' : '#ffaa00';
+
+  return (
+    <group position={position}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.2, 0.35, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.6} side={THREE.DoubleSide} />
+      </mesh>
+      
+      <mesh 
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+        onPointerOut={() => setHovered(false)}
+      >
+        <sphereGeometry args={[0.15, 16, 16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} />
+      </mesh>
+
+      {hovered && (
+        <Html position={[0, 0.6, 0]} center className="pointer-events-none z-50">
+          <div className="bg-surfaceElevated/95 text-white text-xs p-2.5 rounded-lg whitespace-nowrap border border-red-500/60 shadow-xl backdrop-blur-md">
+            <span className="font-bold uppercase tracking-wider text-red-400 block mb-0.5">{alert.severity} ALERT</span>
+            <span className="text-textSecondary">{alert.message}</span>
+            <span className="block text-[10px] text-primary/80 mt-1 font-mono">
+              GPS: {alert.location.lat.toFixed(2)}°N, {alert.location.lon.toFixed(2)}°E
+            </span>
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+};
 
 const AlertMarkers = () => {
   const { alerts } = useMonitoringStore();
+  const { anomalyEnabled } = useAnalyticsStore();
+  if (!anomalyEnabled) return null;
   const activeAlerts = alerts.filter(a => a.status === 'ACTIVE' && a.location);
 
   return (
     <group>
       {activeAlerts.map(alert => (
-        <mesh key={alert.id} position={[(alert.location!.lon - 80) * 0.5, 0.5, (15 - alert.location!.lat) * 0.5]}>
-          <sphereGeometry args={[0.3, 16, 16]} />
-          <meshBasicMaterial color={alert.severity === 'CRITICAL' ? '#ff0000' : '#ffa500'} />
-          <Html position={[0, 0.5, 0]} center>
-            <div className="bg-black/80 text-white text-[10px] p-1 rounded whitespace-nowrap border border-red-500">
-              {alert.severity}: {alert.message}
-            </div>
-          </Html>
-        </mesh>
+        <AlertMarkerItem key={alert.id} alert={alert} />
       ))}
+    </group>
+  );
+};
+
+// 3D Depth Slice Renderer (renders horizontal slice at selected depth)
+const DepthSliceMesh = () => {
+  const { selectedVariable, selectedDepth, selectedTime } = useOceanStore();
+  const { verticalExaggeration } = useAnalyticsStore();
+  const sizeWidth = SCENE_DIMENSIONS.width;
+  const sizeDepth = SCENE_DIMENSIONS.depth;
+  const yPos = depthToWorld(selectedDepth) * verticalExaggeration;
+
+  const geometry = useMemo(() => {
+    const geom = new THREE.PlaneGeometry(sizeWidth, sizeDepth, 32, 32);
+    const count = geom.attributes.position.count;
+    const colors = new Float32Array(count * 3);
+    const pos = geom.attributes.position;
+
+    for (let i = 0; i < count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getY(i); // planar Y maps to world Z
+
+      // Realistic decay with depth
+      let val = 28;
+      if (selectedVariable === 'temperature') {
+        const surf = 29 - Math.abs(z / sizeDepth) * 6;
+        val = Math.max(2, surf * Math.exp(-selectedDepth / 600));
+      } else if (selectedVariable === 'salinity') {
+        val = x < 0 ? 36.2 : 33.0;
+      } else if (selectedVariable === 'chlorophyll') {
+        val = selectedDepth < 150 ? Math.max(0, 1.8 * (1 - selectedDepth / 150)) : 0.05;
+      }
+
+      const color = getVariableColor(selectedVariable, val);
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+    }
+
+    geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    return geom;
+  }, [selectedVariable, selectedDepth, selectedTime, sizeWidth, sizeDepth]);
+
+  return (
+    <group position={[0, yPos, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh geometry={geometry}>
+        <meshStandardMaterial vertexColors side={THREE.DoubleSide} roughness={0.3} transparent opacity={0.88} />
+      </mesh>
+      {/* Slice Depth Indicator Wireframe */}
+      <lineSegments>
+        <edgesGeometry args={[new THREE.PlaneGeometry(sizeWidth, sizeDepth)]} />
+        <lineBasicMaterial color="#00e5ff" linewidth={2} />
+      </lineSegments>
     </group>
   );
 };
 
 const OceanDataMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { selectedVariable, layers, selectedTime, selectedDepth, fieldData, dataMode } = useOceanStore();
-  const { verticalExaggeration, depthSliceEnabled, bathymetryEnabled, gridEnabled } = useAnalyticsStore();
+  const { selectedVariable, layers, selectedTime, selectedDepth } = useOceanStore();
+  const { verticalExaggeration, bathymetryEnabled, gridEnabled } = useAnalyticsStore();
   
-  const resolution = 50;
-  const size = 100;
+  const resolution = 64;
+  const sizeWidth = SCENE_DIMENSIONS.width;
+  const sizeDepth = SCENE_DIMENSIONS.depth;
   
   const geometry = useMemo(() => {
-    return new THREE.PlaneGeometry(size, size, resolution, resolution);
-  }, []);
+    const geom = new THREE.PlaneGeometry(sizeWidth, sizeDepth, resolution, resolution);
+    const count = geom.attributes.position.count;
+    geom.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    return geom;
+  }, [sizeWidth, sizeDepth]);
+
+  const { replayMode, currentFrameIndex, replayFrames } = useReplayStore();
 
   useFrame(({ clock }) => {
     if (meshRef.current) {
-      const time = clock.getElapsedTime() + selectedTime;
-      const positions = geometry.attributes.position;
-      
-      // If we have real API fieldData loaded, use it to deform the mesh.
-      // NOTE: This assumes fieldData is a flat array of grid points mapped to the resolution.
-      // Since resolution is 50x50 = 2500 vertices, we need to map our fieldData (which might be 30x35) onto this.
-      // For simplicity in this demo wrapper, we will just use it if length matches, otherwise fallback or interpolate.
-      const hasRealData = dataMode === 'api' && fieldData && fieldData.length > 0;
-      
-      for (let i = 0; i < positions.count; i++) {
-        const x = positions.getX(i);
-        const y = positions.getY(i);
-        let z = 0;
+      const geom = meshRef.current.geometry as THREE.BufferGeometry;
+      const pos = geom.attributes.position;
+      const colors = geom.attributes.color;
+      const replayOffset = replayMode ? currentFrameIndex * 0.4 : 0;
+      const t = clock.getElapsedTime() * 0.5 + (selectedTime + replayOffset) * 0.3;
 
-        if (hasRealData && i < fieldData.length) {
-           // We scale real data value to something visible. E.g. temperature [0,35]
-           z = (fieldData[i].value - 15) * 0.2; 
-        } else {
-           // Fallback / Demo simulation
-           z = Math.sin(x * 0.1 + time) * Math.cos(y * 0.1) * 1.5;
-           if (selectedVariable === 'temperature') {
-             z += Math.sin(y * 0.2 - time) * 0.5;
-           } else if (selectedVariable === 'salinity') {
-             z += Math.cos(x * 0.15 + time) * 0.8;
-           }
+      const activeSST = (replayMode && replayFrames[currentFrameIndex]?.sst) || null;
+
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        
+        // Multi-frequency dynamic ocean wave displacement
+        const primaryWave = Math.sin(x * 0.35 + t * 1.2) * Math.cos(y * 0.35 + t * 0.9) * 0.22;
+        const secondaryRipples = Math.sin((x + y) * 0.6 + t * 1.6) * 0.10;
+        pos.setZ(i, primaryWave + secondaryRipples);
+
+        // Normalize geographical space across Indian Ocean
+        const latNorm = (y + sizeDepth / 2) / sizeDepth; // 0 = South (30°S), 1 = North (25°N)
+        const lonNorm = (x + sizeWidth / 2) / sizeWidth; // 0 = West (40°E), 1 = East (105°E)
+
+        let val = 26;
+        if (selectedVariable === 'temperature') {
+          if (activeSST && activeSST.length > 0) {
+            // Real satellite Sea Surface Temperature interpolated from Copernicus/Open-Meteo
+            const geoLat = -30 + latNorm * 55;
+            const geoLon = 40 + lonNorm * 65;
+            const realTemp = interpolateSST(activeSST, geoLat, geoLon);
+            // Apply vertical depth decay if depth slider is moved
+            val = Math.max(1.5, realTemp - (selectedDepth / 1600) * (realTemp - 1.5));
+          } else {
+            // Baseline Indian Ocean Warm Pool thermal model for live view
+            const tropicalWarmth = Math.sin(latNorm * Math.PI * 0.85) * 20 + 9;
+            const warmPoolCore = (lonNorm > 0.45 && latNorm > 0.35) ? 2.5 : 0;
+            const thermalRipples = Math.sin(x * 0.3 + t * 0.7) * Math.cos(y * 0.25 + t * 0.5) * 1.6;
+
+            const surfaceTemp = tropicalWarmth + warmPoolCore + thermalRipples;
+            val = Math.max(1.5, surfaceTemp - (selectedDepth / 1600) * (surfaceTemp - 1.5));
+          }
+        } else if (selectedVariable === 'salinity') {
+          // Arabian Sea (high salinity 36.5) vs Bay of Bengal (monsoon river runoff 32.5)
+          const baseSal = x < 0 ? 36.5 : 32.8;
+          val = baseSal + Math.sin(x * 0.4 + t * 0.6) * 0.4;
+        } else if (selectedVariable === 'current') {
+          // Flow velocity in m/s with gyre circulation
+          val = 0.25 + Math.abs(Math.sin(x * 0.3 + y * 0.3 + t)) * 0.9 + Math.cos(latNorm * 3 + t) * 0.25;
+        } else if (selectedVariable === 'chlorophyll') {
+          const coastal = (latNorm > 0.6 || x < -8 || x > 8) ? 1.8 : 0.2;
+          val = Math.max(0.05, (coastal + Math.sin(x * 0.5 + t) * 0.4) * (selectedDepth < 200 ? (1 - selectedDepth / 200) : 0.05));
         }
 
-        positions.setZ(i, z * verticalExaggeration);
+        const color = getVariableColor(selectedVariable, val);
+        colors.setXYZ(i, color.r, color.g, color.b);
       }
       
-      geometry.attributes.position.needsUpdate = true;
-      geometry.computeVertexNormals();
+      pos.needsUpdate = true;
+      colors.needsUpdate = true;
+      geom.computeVertexNormals();
     }
   });
 
-  const getMaterialColor = () => {
-    switch (selectedVariable) {
-      case 'temperature': return '#ff4b1f';
-      case 'salinity': return '#1fddff';
-      case 'current': return '#1f51ff';
-      case 'chlorophyll': return '#1fff4b';
-      default: return '#00d4ff';
-    }
-  };
+  const { selectObservation } = useObservationStore();
 
   return (
     <group>
       {layers.model && (
-        <mesh ref={meshRef} geometry={geometry} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh 
+          ref={meshRef} 
+          geometry={geometry} 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0, 0]}
+          onClick={() => selectObservation(null)}
+        >
           <meshStandardMaterial 
-            color={getMaterialColor()} 
-            wireframe={!layers.isosurface}
-            transparent
-            opacity={0.7}
+            vertexColors 
+            roughness={0.25} 
+            metalness={0.15} 
             side={THREE.DoubleSide}
+            transparent
+            opacity={0.88}
           />
         </mesh>
       )}
 
-      {depthSliceEnabled && (
-        <mesh position={[0, -selectedDepth * 0.01 * verticalExaggeration, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[size, size]} />
-          <meshStandardMaterial color={getMaterialColor()} transparent opacity={0.3} side={THREE.DoubleSide} />
-        </mesh>
-      )}
-
+      {/* Seafloor bathymetry grid */}
       {bathymetryEnabled && (
-        <mesh position={[0, -20 * verticalExaggeration, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[size, size, 20, 20]} />
-          <meshStandardMaterial color="#001a33" wireframe={true} />
+        <mesh position={[0, -8 * verticalExaggeration, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[sizeWidth, sizeDepth, 15, 15]} />
+          <meshStandardMaterial color="#011627" wireframe={true} transparent opacity={0.5} />
         </mesh>
       )}
 
       {gridEnabled && (
-        <Grid position={[0, -10 * verticalExaggeration, 0]} args={[100, 100]} cellColor="#444" sectionColor="#888" fadeDistance={50} />
+        <Grid position={[0, -5 * verticalExaggeration, 0]} args={[sizeWidth, sizeDepth]} cellColor="#1b2a4a" sectionColor="#00d4ff" fadeDistance={35} />
       )}
       
       <AlertMarkers />
@@ -129,12 +269,13 @@ export const OceanWorld: React.FC = () => {
   const { camera } = useThree();
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { visualizationMode } = useOceanStore();
+  const { isosurfaceEnabled } = useAnalyticsStore();
 
   useEffect(() => {
     const handleReset = () => {
       if (controlsRef.current) {
         controlsRef.current.reset();
-        camera.position.set(15, 10, 15);
+        camera.position.set(0, 18, 22);
         camera.lookAt(0, 0, 0);
       }
     };
@@ -144,20 +285,39 @@ export const OceanWorld: React.FC = () => {
 
   return (
     <>
-      <ambientLight intensity={0.4} color="#a0c4ff" />
-      <directionalLight position={[10, 20, 5]} intensity={1.2} color="#ffffff" />
-      <hemisphereLight groundColor="#051923" color="#a0c4ff" intensity={0.6} />
+      <ambientLight intensity={0.7} color="#c0ddff" />
+      <directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffffff" castShadow />
+      <directionalLight position={[-15, -10, -10]} intensity={0.4} color="#004488" />
       
-      {visualizationMode === '3d' && (
-        <>
-          <OceanDataMesh />
-        </>
-      )}
+      {/* 3D Indian Ocean Landmasses, Coastlines, and Geo Labels */}
+      <LandmassRenderer />
 
-      {/* Other modes rely on analytics states handled inside OceanDataMesh or temporarily disabled */}
-      {(visualizationMode === 'slices' || visualizationMode === 'vertical' || visualizationMode === 'iso') && (
-        <OceanDataMesh />
-      )}
+      {/* Tab 1: 3D Ocean Surface & Basin Field */}
+      {visualizationMode === '3d' && <OceanDataMesh />}
+
+      {/* Tab 2: Depth Slices View */}
+      {visualizationMode === 'slices' && <DepthSliceMesh />}
+
+      {/* Tab 3: Vertical Transect Section Curtain */}
+      {visualizationMode === 'vertical' && <VerticalSection />}
+
+      {/* Tab 4: 3D Isosurface Boundary */}
+      {(visualizationMode === 'iso' || isosurfaceEnabled) && <Isosurface />}
+
+      {/* 3D Seafloor Bathymetry Terrain */}
+      <Bathymetry />
+
+      {/* 3D Dynamic Current Vector Field Grid */}
+      <VectorFieldRenderer />
+
+      {/* 3D Flowing Particle Streamline Simulation */}
+      <ParticleFlowRenderer />
+
+      {/* Interactive 3D Cursor Data Probe HUD */}
+      <DataProbeRenderer />
+
+      {/* In-Situ Observation System (Argo Floats, Moorings, Gliders, CTD, BGC) */}
+      <ObservationSystem />
       
       <OrbitControls 
         ref={controlsRef}
@@ -166,10 +326,10 @@ export const OceanWorld: React.FC = () => {
         enableRotate={true}
         enableDamping={true}
         dampingFactor={0.05}
-        maxPolarAngle={Math.PI / 2 - 0.05}
-        minDistance={2}
+        maxPolarAngle={Math.PI / 2 - 0.02}
+        minDistance={3}
         maxDistance={60}
-        target={[0, -2, 0]}
+        target={[0, 0, 0]}
       />
       <Environment preset="night" />
     </>

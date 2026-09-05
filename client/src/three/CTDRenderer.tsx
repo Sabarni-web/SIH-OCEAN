@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Box, Html } from '@react-three/drei';
 import { useObservationStore } from '../store/useObservationStore';
 import { geoToWorld, depthToWorld } from './utils/coordinates';
@@ -35,11 +35,21 @@ export const CTDRenderer: React.FC<Props> = ({ data }) => {
             </Box>
 
             {isSelected && (
-              <Html position={[0, 1, 0]} center className="pointer-events-none">
-                <div className="bg-surfaceElevated border border-purple-400/50 text-white p-2 rounded text-xs shadow-lg backdrop-blur-md whitespace-nowrap z-50">
-                  <p className="font-bold text-purple-400 mb-1 border-b border-purple-400/30 pb-1">CTD STATION</p>
-                  <p>ID: {ctd.cruiseId}</p>
-                  <p>Depth: {ctd.depth.toFixed(1)}m</p>
+              <Html position={[0, 1, 0]} center className="pointer-events-auto z-50">
+                <div className="bg-surfaceElevated/95 border border-purple-400/60 text-white p-2.5 rounded-lg text-xs shadow-2xl backdrop-blur-md whitespace-nowrap relative">
+                  <div className="flex items-center justify-between gap-3 border-b border-purple-400/30 pb-1 mb-1.5">
+                    <span className="font-bold text-purple-400 tracking-wider uppercase text-[11px]">CTD STATION</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); selectObservation(null); }}
+                      className="text-textSecondary hover:text-white p-0.5 hover:bg-white/10 rounded transition-colors text-xs font-bold leading-none"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="font-mono text-[11px]">Cruise: <span className="text-white font-bold">{ctd.cruiseId}</span></p>
+                  <p className="text-textSecondary text-[11px]">Lat: {ctd.latitude.toFixed(2)}° | Lon: {ctd.longitude.toFixed(2)}°</p>
+                  <p className="text-textSecondary text-[11px]">Depth: <span className="text-cyan-300 font-bold">{ctd.depth.toFixed(1)}m</span></p>
                 </div>
               </Html>
             )}

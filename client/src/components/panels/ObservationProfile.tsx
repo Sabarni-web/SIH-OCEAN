@@ -1,7 +1,8 @@
-﻿import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
-import { X, Activity } from 'lucide-react';
-import type { Observation } from '../../../../shared/types';
+import { X, Activity, Loader2 } from 'lucide-react';
+import type { Observation, ArgoFloat } from '../../../../shared/types';
+import { observationService } from '../../services/api';
 
 interface Props {
   observation: Observation;
@@ -9,14 +10,48 @@ interface Props {
 }
 
 export const ObservationProfile: React.FC<Props> = ({ observation, onClose }) => {
-  // Generate a mock profile for this observation (since the core data point only holds surface/current depth)
-  // We'll create a nice descending profile.
-  const depths = [0, 50, 100, 200, 500, 1000, 2000];
-  const baseTemp = observation.variables.temperature || 25;
-  const temps = depths.map(d => Math.max(2, baseTemp - (d / 2000) * (baseTemp - 2) + (Math.random() - 0.5)));
-  
-  const baseSal = observation.variables.salinity || 35;
-  const sals = depths.map(d => baseSal + (Math.random() - 0.5) * 0.5);
+  const [profileData, setProfileData] = useState<{ depths: number[]; temperatures: number[]; salinities: number[] }>({
+    depths: [],
+    temperatures: [],
+    salinities: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  const wmoId = (observation as ArgoFloat).wmoId || observation.id.replace('incois-argo-', '');
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchProfile = async () => {
+      setLoading(true);
+      try {
+        const res = await observationService.getObservationProfile(wmoId);
+        if (isMounted && res && res.data && res.data.depths.length > 0) {
+          setProfileData(res.data);
+        } else if (isMounted) {
+          // Fallback to single point if no full vertical cast
+          setProfileData({
+            depths: [observation.depth || 0],
+            temperatures: [observation.variables.temperature || 0],
+            salinities: [observation.variables.salinity || 0]
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load real depth profile:", err);
+        if (isMounted) {
+          setProfileData({
+            depths: [observation.depth || 0],
+            temperatures: [observation.variables.temperature || 0],
+            salinities: [observation.variables.salinity || 0]
+          });
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchProfile();
+    return () => { isMounted = false; };
+  }, [wmoId, observation]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
@@ -26,7 +61,7 @@ export const ObservationProfile: React.FC<Props> = ({ observation, onClose }) =>
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-bold text-white tracking-wider">
-              {observation.type.toUpperCase()} PROFILE - {observation.id}
+              {observation.type.toUpperCase()} REAL PROFILE - WMO #{wmoId}
             </h2>
           </div>
           <button onClick={onClose} className="p-1 text-textSecondary hover:text-white bg-surfaceElevated rounded-md border border-border">
@@ -34,71 +69,78 @@ export const ObservationProfile: React.FC<Props> = ({ observation, onClose }) =>
           </button>
         </div>
 
-        <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
-          {/* Temperature Profile */}
-          <div className="glass-panel p-4 rounded-xl flex flex-col h-[400px]">
-            <h3 className="text-sm font-semibold text-textSecondary text-center mb-2">Temperature vs Depth</h3>
-            <div className="flex-1 w-full">
-              <Plot
-                data={[
-                  {
-                    x: temps,
-                    y: depths,
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    line: { color: '#00d4ff', width: 2, shape: 'spline' },
-                    marker: { color: '#ffffff', size: 6 },
-                    name: 'Temperature'
-                  }
-                ]}
-                layout={{
-                  autosize: true,
-                  margin: { t: 10, r: 10, l: 50, b: 40 },
-                  paper_bgcolor: 'transparent',
-                  plot_bgcolor: 'transparent',
-                  font: { color: '#8892b0' },
-                  yaxis: { title: 'Depth (m)', autorange: 'reversed', gridcolor: '#1e293b' },
-                  xaxis: { title: 'Temperature (Â°C)', gridcolor: '#1e293b' },
-                  hovermode: 'closest'
-                }}
-                config={{ displayModeBar: false, responsive: true }}
-                style={{ width: '100%', height: '100%' }}
-              />
-            </div>
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-cyan-400">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <p className="text-sm">Fetching real vertical water-column profile from INCOIS...</p>
           </div>
+        ) : (
+          <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+            {/* Temperature Profile */}
+            <div className="glass-panel p-4 rounded-xl flex flex-col h-[400px]">
+              <h3 className="text-sm font-semibold text-textSecondary text-center mb-2">Real Temperature vs Depth</h3>
+              <div className="flex-1 w-full">
+                <Plot
+                  data={[
+                    {
+                      x: profileData.temperatures,
+                      y: profileData.depths,
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      line: { color: '#00d4ff', width: 2, shape: 'spline' },
+                      marker: { color: '#ffffff', size: 6 },
+                      name: 'Temperature'
+                    }
+                  ]}
+                  layout={{
+                    autosize: true,
+                    margin: { t: 10, r: 10, l: 50, b: 40 },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: '#8892b0' },
+                    yaxis: { title: 'Depth (dbar / m)', autorange: 'reversed', gridcolor: '#1e293b' },
+                    xaxis: { title: 'Temperature (°C)', gridcolor: '#1e293b' },
+                    hovermode: 'closest'
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </div>
+            </div>
 
-          {/* Salinity Profile */}
-          <div className="glass-panel p-4 rounded-xl flex flex-col h-[400px]">
-            <h3 className="text-sm font-semibold text-textSecondary text-center mb-2">Salinity vs Depth</h3>
-            <div className="flex-1 w-full">
-              <Plot
-                data={[
-                  {
-                    x: sals,
-                    y: depths,
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    line: { color: '#00ff88', width: 2, shape: 'spline' },
-                    marker: { color: '#ffffff', size: 6 },
-                    name: 'Salinity'
-                  }
-                ]}
-                layout={{
-                  autosize: true,
-                  margin: { t: 10, r: 10, l: 50, b: 40 },
-                  paper_bgcolor: 'transparent',
-                  plot_bgcolor: 'transparent',
-                  font: { color: '#8892b0' },
-                  yaxis: { title: 'Depth (m)', autorange: 'reversed', gridcolor: '#1e293b' },
-                  xaxis: { title: 'Salinity (PSU)', gridcolor: '#1e293b' },
-                  hovermode: 'closest'
-                }}
-                config={{ displayModeBar: false, responsive: true }}
-                style={{ width: '100%', height: '100%' }}
-              />
+            {/* Salinity Profile */}
+            <div className="glass-panel p-4 rounded-xl flex flex-col h-[400px]">
+              <h3 className="text-sm font-semibold text-textSecondary text-center mb-2">Real Salinity vs Depth</h3>
+              <div className="flex-1 w-full">
+                <Plot
+                  data={[
+                    {
+                      x: profileData.salinities,
+                      y: profileData.depths,
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      line: { color: '#00ff88', width: 2, shape: 'spline' },
+                      marker: { color: '#ffffff', size: 6 },
+                      name: 'Salinity'
+                    }
+                  ]}
+                  layout={{
+                    autosize: true,
+                    margin: { t: 10, r: 10, l: 50, b: 40 },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    font: { color: '#8892b0' },
+                    yaxis: { title: 'Depth (dbar / m)', autorange: 'reversed', gridcolor: '#1e293b' },
+                    xaxis: { title: 'Salinity (PSU)', gridcolor: '#1e293b' },
+                    hovermode: 'closest'
+                  }}
+                  config={{ displayModeBar: false, responsive: true }}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

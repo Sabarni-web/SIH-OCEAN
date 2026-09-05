@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Navigation, ArrowRight, X } from 'lucide-react';
 import { useObservationStore } from '../../store/useObservationStore';
 import type { ArgoFloat, Glider, CTDObservation, Mooring, BGCObservation } from '../../../../shared/types';
@@ -121,7 +121,7 @@ export const SelectedInstrumentPanel: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-textSecondary mb-1">Location</p>
-              <p className="text-sm font-medium text-white">{selectedObservation.latitude.toFixed(2)}Â° N<br/>{selectedObservation.longitude.toFixed(2)}Â° E</p>
+              <p className="text-sm font-medium text-white">{selectedObservation.latitude.toFixed(2)}° N<br/>{selectedObservation.longitude.toFixed(2)}° E</p>
             </div>
             <div>
               <p className="text-xs text-textSecondary mb-1">Timestamp</p>
@@ -137,7 +137,7 @@ export const SelectedInstrumentPanel: React.FC = () => {
           {selectedObservation.variables.temperature !== undefined && (
             <div className="flex justify-between items-center bg-surfaceElevated p-2 rounded-md border border-border/50">
               <span className="text-xs text-textSecondary">Temperature</span>
-              <span className="text-sm font-bold text-primary">{selectedObservation.variables.temperature.toFixed(1)} Â°C</span>
+              <span className="text-sm font-bold text-primary">{selectedObservation.variables.temperature.toFixed(1)} °C</span>
             </div>
           )}
 

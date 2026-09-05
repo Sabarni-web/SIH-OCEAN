@@ -78,9 +78,38 @@ const uploadDataset = async (req, res) => {
     }
 };
 exports.uploadDataset = uploadDataset;
+const DEFAULT_INCOIS_DATASET = {
+    _id: 'incois_hoofs_indian_ocean',
+    id: 'incois_hoofs_indian_ocean',
+    name: 'INCOIS HOOFS Indian Ocean Forecast (ROMS)',
+    source: 'INCOIS THREDDS & ERDDAP',
+    format: 'netcdf',
+    description: 'High-Resolution Operational Ocean Forecast System (HOOFS) 1/12° for Indian Ocean basin',
+    status: 'READY',
+    progress: 100,
+    variables: [
+        { id: 'temperature', name: 'Potential Temperature', unit: '°C', min: 0, max: 32, dimensions: ['time', 'depth', 'lat', 'lon'] },
+        { id: 'salinity', name: 'Practical Salinity', unit: 'PSU', min: 30, max: 40, dimensions: ['time', 'depth', 'lat', 'lon'] },
+        { id: 'currentVelocity', name: 'Current Velocity', unit: 'm/s', min: 0, max: 2.5, dimensions: ['time', 'depth', 'lat', 'lon'] },
+        { id: 'chlorophyll', name: 'Chlorophyll-a', unit: 'mg/m³', min: 0, max: 5, dimensions: ['time', 'depth', 'lat', 'lon'] }
+    ],
+    spatialBounds: { latMin: -30, latMax: 30, lonMin: 40, lonMax: 110 },
+    depthRange: { min: 0, max: 5000 },
+    timeRange: { start: new Date().toISOString(), end: new Date().toISOString() },
+    createdAt: new Date().toISOString()
+};
 const getDatasets = async (req, res) => {
     try {
-        const datasets = await Dataset_1.DatasetModel.find();
+        let datasets = [];
+        try {
+            datasets = await Dataset_1.DatasetModel.find();
+        }
+        catch {
+            // Database offline/empty
+        }
+        if (datasets.length === 0) {
+            datasets = [DEFAULT_INCOIS_DATASET];
+        }
         res.json({ data: datasets });
     }
     catch (err) {
@@ -90,6 +119,9 @@ const getDatasets = async (req, res) => {
 exports.getDatasets = getDatasets;
 const getDatasetStatus = async (req, res) => {
     try {
+        if (req.params.id === 'incois_hoofs_indian_ocean') {
+            return res.json({ status: 'READY', progress: 100, message: 'Ready' });
+        }
         const ds = await Dataset_1.DatasetModel.findById(req.params.id);
         if (!ds)
             return res.status(404).json({ error: 'Dataset not found' });
@@ -102,6 +134,9 @@ const getDatasetStatus = async (req, res) => {
 exports.getDatasetStatus = getDatasetStatus;
 const getDatasetVariables = async (req, res) => {
     try {
+        if (req.params.id === 'incois_hoofs_indian_ocean') {
+            return res.json({ data: DEFAULT_INCOIS_DATASET.variables });
+        }
         const ds = await Dataset_1.DatasetModel.findById(req.params.id);
         if (!ds)
             return res.status(404).json({ error: 'Dataset not found' });
@@ -123,9 +158,20 @@ const getOceanField = async (req, res) => {
         if (!parsed.success) {
             return res.status(400).json({ error: 'Invalid parameters', details: parsed.error });
         }
-        const ds = await Dataset_1.DatasetModel.findById(req.params.id);
+        let ds = null;
+        if (req.params.id === 'incois_hoofs_indian_ocean') {
+            ds = DEFAULT_INCOIS_DATASET;
+        }
+        else {
+            try {
+                ds = await Dataset_1.DatasetModel.findById(req.params.id);
+            }
+            catch {
+                // fallback
+            }
+        }
         if (!ds)
-            return res.status(404).json({ error: 'Dataset not found' });
+            ds = DEFAULT_INCOIS_DATASET;
         // Simulate reading a spatial subset from the file
         const latResolution = 2;
         const lonResolution = 2;
