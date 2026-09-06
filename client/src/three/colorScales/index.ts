@@ -8,11 +8,12 @@ export interface ColorScaleConfig {
 export const COLOR_SCALES: Record<string, ColorScaleConfig> = {
   thermal: {
     stops: [
-      { value: 0, color: '#0000ff' }, // Deep Blue
-      { value: 0.25, color: '#00ffff' }, // Cyan
-      { value: 0.5, color: '#00ff00' }, // Green
-      { value: 0.75, color: '#ffff00' }, // Yellow
-      { value: 1, color: '#ff0000' }, // Red
+      { value: 0.0, color: '#001144' }, // Midnight Blue
+      { value: 0.2, color: '#0055ff' }, // Ocean Blue
+      { value: 0.4, color: '#00e5ff' }, // Cyan
+      { value: 0.6, color: '#44ff00' }, // Lime Green
+      { value: 0.8, color: '#ffaa00' }, // Orange/Yellow
+      { value: 1.0, color: '#ff0033' }, // Intense Red
     ]
   },
   haline: {
