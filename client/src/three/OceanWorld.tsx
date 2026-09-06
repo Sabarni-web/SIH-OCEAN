@@ -22,6 +22,7 @@ import { OCEAN_VARIABLES } from '../data/variables';
 import { useReplayStore } from '../store/useReplayStore';
 import type { SSTGridPoint } from '../../../shared/types';
 import { SCENE_DIMENSIONS, geoToWorld, depthToWorld } from './utils/coordinates';
+import { VolumeBounds } from './VolumeBounds';
 
 function interpolateSST(sstGrid: SSTGridPoint[], targetLat: number, targetLon: number): number {
   let weightedSum = 0;
@@ -322,7 +323,7 @@ const OceanDataMesh = () => {
       )}
 
       {gridEnabled && (
-        <Grid position={[0, -5 * verticalExaggeration, 0]} args={[sizeWidth, sizeDepth]} cellColor="#1b2a4a" sectionColor="#00d4ff" fadeDistance={35} />
+        <VolumeBounds />
       )}
       
       <AlertMarkers />
@@ -350,9 +351,9 @@ export const OceanWorld: React.FC = () => {
 
   return (
     <>
-      <ambientLight intensity={0.7} color="#c0ddff" />
-      <directionalLight position={[15, 25, 10]} intensity={1.5} color="#ffffff" castShadow />
-      <directionalLight position={[-15, -10, -10]} intensity={0.4} color="#004488" />
+      <ambientLight intensity={1.2} color="#ffffff" />
+      <directionalLight position={[15, 30, 15]} intensity={2.0} color="#ffffff" castShadow />
+      <directionalLight position={[-15, -15, -15]} intensity={0.8} color="#00e5ff" />
       
       {/* 3D Indian Ocean Landmasses, Coastlines, and Geo Labels */}
       <LandmassRenderer />
