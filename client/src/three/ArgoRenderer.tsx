@@ -26,7 +26,6 @@ export const ArgoRenderer: React.FC<Props> = ({ data }) => {
             onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
             onPointerOut={() => { document.body.style.cursor = 'default'; }}
           >
-<<<<<<< HEAD
             {/* Main Float body cylinder - Yellow */}
             <Cylinder args={[0.15, 0.15, 1.2, 16]} position={[0, -0.6, 0]}>
               <meshStandardMaterial 
@@ -58,49 +57,9 @@ export const ArgoRenderer: React.FC<Props> = ({ data }) => {
               <meshStandardMaterial 
                 color={isSelected ? "#00ffff" : "#ff3300"} 
                 emissive={isSelected ? "#00ffff" : "#ff0000"} 
-=======
-            {/* Top antenna pole */}
-            <Cylinder args={[0.02, 0.02, 0.4, 8]} position={[0, 0.4, 0]}>
-              <meshStandardMaterial color="#222222" roughness={0.7} />
-            </Cylinder>
-            
-            {/* Top antenna beacon/bulb */}
-            <Sphere args={[0.06, 12, 12]} position={[0, 0.6, 0]}>
-              <meshStandardMaterial 
-                color={isSelected ? "#00ffff" : "#ffb703"} 
-                emissive={isSelected ? "#00ffff" : "#fb8500"} 
->>>>>>> fcfa7cf68355429a70e70d622165d519a641cb6a
                 emissiveIntensity={isSelected ? 1.5 : 0.8} 
               />
             </Sphere>
-
-            {/* Bottom weighted pole */}
-            <Cylinder args={[0.03, 0.03, 0.3, 8]} position={[0, -0.4, 0]}>
-              <meshStandardMaterial color="#222222" roughness={0.7} />
-            </Cylinder>
-            
-            {/* Bottom weight bulb */}
-            <Sphere args={[0.07, 12, 12]} position={[0, -0.55, 0]}>
-              <meshStandardMaterial color="#ffb703" roughness={0.5} />
-            </Sphere>
-
-            {/* Float main body cylinder */}
-            <Cylinder args={[0.12, 0.12, 0.5, 16]} position={[0, 0, 0]}>
-              <meshStandardMaterial 
-                color={isSelected ? "#00ffff" : "#ffb703"} 
-                emissive={isSelected ? "#00ffff" : "#fb8500"} 
-                emissiveIntensity={isSelected ? 0.8 : 0.3}
-                roughness={0.4}
-              />
-            </Cylinder>
-
-            {/* Black bands on the body */}
-            <Cylinder args={[0.125, 0.125, 0.05, 16]} position={[0, 0.15, 0]}>
-              <meshStandardMaterial color="#111111" roughness={0.8} />
-            </Cylinder>
-            <Cylinder args={[0.125, 0.125, 0.05, 16]} position={[0, -0.15, 0]}>
-              <meshStandardMaterial color="#111111" roughness={0.8} />
-            </Cylinder>
 
             {/* Selection glowing aura */}
             {isSelected && (
