@@ -24,10 +24,11 @@ export const COLOR_SCALES: Record<string, ColorScaleConfig> = {
   },
   algae: {
     stops: [
-      { value: 0, color: '#000033' },
-      { value: 0.2, color: '#132B43' },
-      { value: 0.5, color: '#56B1F7' },
-      { value: 1, color: '#ffffcc' },
+      { value: 0, color: '#001a00' }, // Very dark green
+      { value: 0.2, color: '#004d00' }, // Dark green
+      { value: 0.5, color: '#00cc00' }, // Bright green
+      { value: 0.8, color: '#aaffaa' }, // Light green
+      { value: 1, color: '#ffff00' }, // Yellow peak
     ]
   },
   velocity: {
@@ -39,10 +40,11 @@ export const COLOR_SCALES: Record<string, ColorScaleConfig> = {
   },
   phase: {
     stops: [
-      { value: 0, color: '#ff0000' },
-      { value: 0.33, color: '#00ff00' },
-      { value: 0.66, color: '#0000ff' },
-      { value: 1, color: '#ff0000' },
+      { value: 0, color: '#00ffff' },   // North: Cyan
+      { value: 0.25, color: '#0088ff' }, // East: Light Blue
+      { value: 0.5, color: '#0000aa' },  // South: Dark Blue
+      { value: 0.75, color: '#0088ff' }, // West: Light Blue
+      { value: 1, color: '#00ffff' },   // North: Cyan
     ]
   },
   oxygen: {

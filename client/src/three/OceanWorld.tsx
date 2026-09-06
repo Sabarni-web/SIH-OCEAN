@@ -10,6 +10,7 @@ import { useAnalyticsStore } from '../store/useAnalyticsStore';
 import { useMonitoringStore } from '../store/useMonitoringStore';
 import { ObservationSystem } from './ObservationSystem';
 import { LandmassRenderer } from './LandmassRenderer';
+import { VolumetricBoundingBox } from './VolumetricBoundingBox';
 import { VerticalSection } from './VerticalSection';
 import { Isosurface } from './Isosurface';
 import { Bathymetry } from './Bathymetry';
@@ -77,8 +78,15 @@ const AlertMarkerItem: React.FC<{ alert: any }> = ({ alert }) => {
 };
 
 const AlertMarkers = () => {
-  const { alerts } = useMonitoringStore();
+  const { alerts, fetchMonitoringData } = useMonitoringStore();
   const { anomalyEnabled } = useAnalyticsStore();
+
+  useEffect(() => {
+    if (anomalyEnabled) {
+      fetchMonitoringData();
+    }
+  }, [anomalyEnabled, fetchMonitoringData]);
+
   if (!anomalyEnabled) return null;
   const activeAlerts = alerts.filter(a => a.status === 'ACTIVE' && a.location);
 
@@ -117,7 +125,39 @@ const DepthSliceMesh = () => {
       } else if (selectedVariable === 'salinity') {
         val = x < 0 ? 36.2 : 33.0;
       } else if (selectedVariable === 'chlorophyll') {
-        val = selectedDepth < 150 ? Math.max(0, 1.8 * (1 - selectedDepth / 150)) : 0.05;
+        // Smooth organic distribution
+        const dist = Math.sqrt(x * x + z * z);
+        const coastalBoost = Math.max(0, (dist - 8) * 0.15); 
+        const organicSwirl = Math.sin(x * 0.4 + z * 0.3) * Math.cos(x * 0.2 - z * 0.5) * 0.8;
+        const baseValue = 0.8 + coastalBoost + organicSwirl;
+        val = Math.max(0.01, Math.min(5.0, baseValue * (selectedDepth < 200 ? (1 - selectedDepth / 200) : 0.05)));
+      } else if (selectedVariable === 'dissolvedOxygen') {
+        const latNorm = (z + sizeDepth / 2) / sizeDepth;
+        // Stronger North-South gradient and dynamic surface patterns (upwelling, currents)
+        const surfaceO2 = 210 + (0.5 - latNorm) * 90; 
+        const surfaceVariations = Math.sin(x * 0.4 + z * 0.3) * 30 + Math.cos(x * 0.2 - z * 0.5) * 20;
+        
+        let omzFactor = 1.0;
+        // Start OMZ impact from 50m to make it highly visible
+        if (selectedDepth > 50 && selectedDepth < 1500) {
+           // Arabian Sea OMZ (North-West) - enlarged radius
+           const arabianOMZ = (x < 2 && z > -2) ? Math.max(0, 1 - Math.sqrt((x+6)*(x+6) + (z-6)*(z-6)) * 0.08) : 0;
+           // Bay of Bengal OMZ (North-East)
+           const bengalOMZ = (x > 2 && z > 0) ? Math.max(0, 1 - Math.sqrt((x-6)*(x-6) + (z-4)*(z-4)) * 0.12) * 0.7 : 0;
+           
+           const depthIntensity = Math.max(0, 1 - Math.abs(selectedDepth - 400) / 400);
+           omzFactor = 1.0 - (arabianOMZ + bengalOMZ) * depthIntensity * 0.95;
+        } else if (selectedDepth >= 1500) {
+           omzFactor = 0.5 + Math.min(0.4, (selectedDepth - 1500) * 0.00015); // Deep recovery
+        }
+      } else if (selectedVariable === 'currentVelocity') {
+        const latNorm = (z + sizeDepth / 2) / sizeDepth;
+        val = 0.25 + Math.abs(Math.sin(x * 0.3 + z * 0.3)) * 0.9 + Math.cos(latNorm * 3) * 0.25;
+      } else if (selectedVariable === 'currentDirection') {
+        const latNorm = (z + sizeDepth / 2) / sizeDepth;
+        const u = Math.cos(x * 0.3 + z * 0.3);
+        const v = Math.sin(latNorm * 3);
+        val = (Math.atan2(v, u) * (180 / Math.PI) + 360) % 360;
       }
 
       const color = getVariableColor(selectedVariable, val);
@@ -207,12 +247,37 @@ const OceanDataMesh = () => {
           // Arabian Sea (high salinity 36.5) vs Bay of Bengal (monsoon river runoff 32.5)
           const baseSal = x < 0 ? 36.5 : 32.8;
           val = baseSal + Math.sin(x * 0.4 + t * 0.6) * 0.4;
-        } else if (selectedVariable === 'current') {
+        } else if (selectedVariable === 'currentVelocity') {
           // Flow velocity in m/s with gyre circulation
           val = 0.25 + Math.abs(Math.sin(x * 0.3 + y * 0.3 + t)) * 0.9 + Math.cos(latNorm * 3 + t) * 0.25;
+        } else if (selectedVariable === 'currentDirection') {
+          // Calculate angle based on the u and v components of the current
+          const u = Math.cos(x * 0.3 + y * 0.3 + t);
+          const v = Math.sin(latNorm * 3 + t);
+          // atan2 returns radians from -PI to PI. Convert to 0-360 degrees.
+          val = (Math.atan2(v, u) * (180 / Math.PI) + 360) % 360;
         } else if (selectedVariable === 'chlorophyll') {
-          const coastal = (latNorm > 0.6 || x < -8 || x > 8) ? 1.8 : 0.2;
-          val = Math.max(0.05, (coastal + Math.sin(x * 0.5 + t) * 0.4) * (selectedDepth < 200 ? (1 - selectedDepth / 200) : 0.05));
+          // Smooth organic bloom simulation
+          const dist = Math.sqrt(x * x + y * y);
+          const coastalBoost = Math.max(0, (dist - 8) * 0.15); 
+          const organicSwirl = Math.sin(x * 0.4 + y * 0.3 + t * 0.5) * Math.cos(x * 0.2 - y * 0.5 + t * 0.3) * 0.8;
+          const baseValue = 0.8 + coastalBoost + organicSwirl;
+          val = Math.max(0.01, Math.min(5.0, baseValue * (selectedDepth < 200 ? (1 - selectedDepth / 200) : 0.05)));
+        } else if (selectedVariable === 'dissolvedOxygen') {
+          // Stronger North-South gradient and dynamic surface patterns
+          const surfaceO2 = 210 + (0.5 - latNorm) * 90; 
+          const surfaceVariations = Math.sin(x * 0.4 + y * 0.3 + t * 0.5) * 30 + Math.cos(x * 0.2 - y * 0.5 + t * 0.3) * 20;
+          
+          let omzFactor = 1.0;
+          if (selectedDepth > 50 && selectedDepth < 1500) {
+             const arabianOMZ = (x < 2 && y > -2) ? Math.max(0, 1 - Math.sqrt((x+6)*(x+6) + (y-6)*(y-6)) * 0.08) : 0;
+             const bengalOMZ = (x > 2 && y > 0) ? Math.max(0, 1 - Math.sqrt((x-6)*(x-6) + (y-4)*(y-4)) * 0.12) * 0.7 : 0;
+             const depthIntensity = Math.max(0, 1 - Math.abs(selectedDepth - 400) / 400);
+             omzFactor = 1.0 - (arabianOMZ + bengalOMZ) * depthIntensity * 0.95;
+          } else if (selectedDepth >= 1500) {
+             omzFactor = 0.5 + Math.min(0.4, (selectedDepth - 1500) * 0.00015); // Deep recovery
+          }
+          val = (surfaceO2 + surfaceVariations) * omzFactor;
         }
 
         const color = getVariableColor(selectedVariable, val);
@@ -294,6 +359,9 @@ export const OceanWorld: React.FC = () => {
 
       {/* Tab 1: 3D Ocean Surface & Basin Field */}
       {visualizationMode === '3d' && <OceanDataMesh />}
+
+      {/* Volumetric Bounding Box for Cutout Effect */}
+      <VolumetricBoundingBox />
 
       {/* Tab 2: Depth Slices View */}
       {visualizationMode === 'slices' && <DepthSliceMesh />}

@@ -1,12 +1,97 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { useAnalyticsStore } from '../store/useAnalyticsStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { useReplayStore } from '../store/useReplayStore';
 import { geoToWorld, SCENE_DIMENSIONS } from './utils/coordinates';
 
+const AnimatedArrow: React.FC<{
+  arr: any;
+  speedColor: string;
+  arrowLength: number;
+  onPointerOver: (e: any) => void;
+  onPointerOut: () => void;
+}> = ({ arr, speedColor, arrowLength, onPointerOver, onPointerOut }) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const tailMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const headMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  
+  useFrame(({ clock }) => {
+    if (groupRef.current) {
+      const t = clock.getElapsedTime();
+      // Calculate a phase based on initial position to desynchronize the arrows
+      const phase = Math.abs(arr.pos[0] * 13.3 + arr.pos[2] * 7.7);
+      
+      // Move forward continuously and loop every 4 units of distance
+      const distance = 4.0;
+      const rawOffset = (t * arr.speed * 2.0 + phase);
+      const offset = rawOffset % distance;
+      
+      // Apply offset to position based on angle
+      const dx = Math.sin(arr.angle) * offset;
+      const dz = Math.cos(arr.angle) * offset;
+      
+      groupRef.current.position.set(arr.pos[0] + dx, arr.pos[1], arr.pos[2] + dz);
+      
+      // Fade in and out at the edges of the loop for smooth resetting
+      let opacity = 1;
+      if (offset < 0.5) opacity = offset / 0.5;
+      else if (offset > distance - 0.5) opacity = (distance - offset) / 0.5;
+      
+      if (tailMatRef.current) tailMatRef.current.opacity = opacity * 0.8;
+      if (headMatRef.current) headMatRef.current.opacity = opacity;
+    }
+  });
+
+  return (
+    <group 
+      ref={groupRef}
+      position={arr.pos} 
+      rotation={[0, arr.angle, 0]}
+      onPointerOver={onPointerOver}
+      onPointerOut={onPointerOut}
+    >
+      {/* Sleek Arrow shaft/tail */}
+      <mesh position={[0, 0, arrowLength * 0.3]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.015, 0.04, arrowLength * 0.8, 8]} />
+        <meshStandardMaterial 
+          ref={tailMatRef}
+          color="#ffffff" 
+          emissive={speedColor} 
+          emissiveIntensity={1.2} 
+          transparent 
+          opacity={0.8} 
+        />
+      </mesh>
+      {/* Pronounced Arrow head */}
+      <mesh position={[0, 0, arrowLength * 0.75]} rotation={[Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.1, 0.35, 12]} />
+        <meshStandardMaterial 
+          ref={headMatRef}
+          color="#ffffff" 
+          emissive={speedColor} 
+          emissiveIntensity={1.8}
+          transparent
+        />
+      </mesh>
+    </group>
+  );
+};
+
 export const VectorFieldRenderer: React.FC = () => {
-  const { vectorEnabled, verticalExaggeration, currentVectors } = useAnalyticsStore();
+  const { verticalExaggeration, currentVectors, fetchCurrentVectors } = useAnalyticsStore();
+  const { layers } = useOceanStore();
   const { replayMode, replayFrames, currentFrameIndex } = useReplayStore();
+
+  const showVectors = layers.currents;
+
+  useEffect(() => {
+    if (showVectors && currentVectors.length === 0) {
+      fetchCurrentVectors();
+    }
+  }, [showVectors, currentVectors.length, fetchCurrentVectors]);
 
   const [hoveredNode, setHoveredNode] = useState<{
     lat: number;
@@ -18,7 +103,7 @@ export const VectorFieldRenderer: React.FC = () => {
   } | null>(null);
 
   const arrowHelpers = useMemo(() => {
-    if (!vectorEnabled) return [];
+    if (!showVectors) return [];
 
     const activeVectors = (replayMode && replayFrames.length > 0)
       ? (replayFrames[currentFrameIndex]?.vectors || [])
@@ -69,9 +154,9 @@ export const VectorFieldRenderer: React.FC = () => {
       }
     }
     return arrows;
-  }, [vectorEnabled, currentVectors, verticalExaggeration, replayMode, replayFrames, currentFrameIndex]);
+  }, [showVectors, currentVectors, verticalExaggeration, replayMode, replayFrames, currentFrameIndex]);
 
-  if (!vectorEnabled) return null;
+  if (!showVectors) return null;
 
 
   return (
@@ -81,10 +166,11 @@ export const VectorFieldRenderer: React.FC = () => {
         const arrowLength = Math.min(1.5, Math.max(0.4, arr.speed * 2.2));
 
         return (
-          <group 
-            key={idx} 
-            position={arr.pos} 
-            rotation={[0, arr.angle, 0]}
+          <AnimatedArrow
+            key={idx}
+            arr={arr}
+            speedColor={speedColor}
+            arrowLength={arrowLength}
             onPointerOver={(e) => {
               e.stopPropagation();
               setHoveredNode({
@@ -97,18 +183,7 @@ export const VectorFieldRenderer: React.FC = () => {
               });
             }}
             onPointerOut={() => setHoveredNode(null)}
-          >
-            {/* Arrow shaft */}
-            <mesh position={[0, 0, arrowLength * 0.4]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.04, 0.04, arrowLength * 0.7, 8]} />
-              <meshStandardMaterial color={speedColor} emissive={speedColor} emissiveIntensity={0.7} />
-            </mesh>
-            {/* Arrow head cone */}
-            <mesh position={[0, 0, arrowLength * 0.85]} rotation={[Math.PI / 2, 0, 0]}>
-              <coneGeometry args={[0.13, 0.3, 8]} />
-              <meshStandardMaterial color={speedColor} emissive={speedColor} emissiveIntensity={1.0} />
-            </mesh>
-          </group>
+          />
         );
       })}
 

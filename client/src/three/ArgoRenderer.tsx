@@ -26,21 +26,38 @@ export const ArgoRenderer: React.FC<Props> = ({ data }) => {
             onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
             onPointerOut={() => { document.body.style.cursor = 'default'; }}
           >
-            {/* Float body cylinder */}
-            <Cylinder args={[0.1, 0.1, 0.5, 12]} rotation={[0, 0, 0]}>
+            {/* Main Float body cylinder - Yellow */}
+            <Cylinder args={[0.15, 0.15, 1.2, 16]} position={[0, -0.6, 0]}>
               <meshStandardMaterial 
-                color={isSelected ? "#00ffff" : "#ffb703"} 
-                emissive={isSelected ? "#00ffff" : "#fb8500"} 
-                emissiveIntensity={isSelected ? 1.0 : 0.5} 
+                color={isSelected ? "#00ffff" : "#ffd700"} 
+                emissive={isSelected ? "#00ffff" : "#ffb700"} 
+                emissiveIntensity={isSelected ? 0.8 : 0.2} 
+                roughness={0.2}
+                metalness={0.6}
               />
             </Cylinder>
             
-            {/* Float antenna beacon top */}
-            <Sphere args={[0.13, 12, 12]} position={[0, 0.3, 0]}>
+            {/* Float black top cap */}
+            <Cylinder args={[0.16, 0.16, 0.1, 16]} position={[0, 0.05, 0]}>
+              <meshStandardMaterial color="#222222" roughness={0.7} />
+            </Cylinder>
+
+            {/* Float dark bottom cap */}
+            <Cylinder args={[0.16, 0.15, 0.2, 16]} position={[0, -1.25, 0]}>
+              <meshStandardMaterial color="#222222" roughness={0.7} />
+            </Cylinder>
+
+            {/* Thin antenna on top */}
+            <Cylinder args={[0.02, 0.02, 0.6, 8]} position={[0, 0.4, 0]}>
+              <meshStandardMaterial color="#dddddd" metalness={0.8} />
+            </Cylinder>
+            
+            {/* Antenna beacon bulb */}
+            <Sphere args={[0.06, 12, 12]} position={[0, 0.7, 0]}>
               <meshStandardMaterial 
-                color={isSelected ? "#00ffff" : "#ffb703"} 
-                emissive={isSelected ? "#00ffff" : "#fb8500"} 
-                emissiveIntensity={isSelected ? 1.2 : 0.6} 
+                color={isSelected ? "#00ffff" : "#ff3300"} 
+                emissive={isSelected ? "#00ffff" : "#ff0000"} 
+                emissiveIntensity={isSelected ? 1.5 : 0.8} 
               />
             </Sphere>
 

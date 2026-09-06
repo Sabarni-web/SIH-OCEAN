@@ -23,7 +23,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Side (Map + Instruments + Layers + Dataset) */}
-        <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
+        <div className="lg:col-span-3 lg:h-[600px] space-y-6 order-2 lg:order-1 overflow-y-auto custom-scrollbar pr-2 pb-2">
           <DatasetSelector />
           <OceanMap />
           <SelectedInstrumentPanel />
@@ -37,7 +37,7 @@ export const Dashboard: React.FC = () => {
         </div>
         
         {/* Right Side (Analytics + Monitoring) */}
-        <div className="lg:col-span-3 h-[600px] order-3 lg:order-3 space-y-6">
+        <div className="lg:col-span-3 lg:h-[600px] order-3 lg:order-3 space-y-6 overflow-y-auto custom-scrollbar pr-2 pb-2">
           <AnalyticsPanel />
           <MonitoringPanel />
         </div>

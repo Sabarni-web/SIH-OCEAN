@@ -25,7 +25,26 @@ let rules: AlertRule[] = [
   { id: '2', variable: 'current', operator: '>', threshold: 1.5, severity: 'CRITICAL', enabled: true }
 ];
 
-let alertsHistory: Alert[] = [];
+let alertsHistory: Alert[] = [
+  {
+    id: uuidv4(),
+    ruleId: '1',
+    timestamp: new Date().toISOString(),
+    severity: 'WARNING',
+    message: 'TEMPERATURE anomaly detected. Threshold > 30',
+    location: { lat: 14.5, lon: 74.2 },
+    status: 'ACTIVE'
+  },
+  {
+    id: uuidv4(),
+    ruleId: '2',
+    timestamp: new Date().toISOString(),
+    severity: 'CRITICAL',
+    message: 'CURRENT anomaly detected. Threshold > 1.5',
+    location: { lat: 12.1, lon: 76.8 },
+    status: 'ACTIVE'
+  }
+];
 
 // Mock engine check
 const evaluateAlerts = () => {
