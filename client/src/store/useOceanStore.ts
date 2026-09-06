@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { datasetService } from '../services/api';
+import { getGridData } from '../data/engine';
 
 interface OceanState {
   selectedRegion: string;
@@ -83,7 +84,19 @@ export const useOceanStore = create<OceanState>((set, get) => ({
   fetchFieldData: async () => {
     const { activeDatasetId, selectedVariable, selectedDepth, selectedTime, dataMode } = get();
     if (dataMode === 'demo' || !activeDatasetId) {
-      set({ fieldData: null });
+      try {
+        set({ isLoadingField: true });
+        const gridData = await getGridData({
+          variableId: selectedVariable,
+          depth: selectedDepth,
+          timeIndex: selectedTime,
+          dataMode: 'demo',
+          activeDatasetId: null
+        });
+        set({ fieldData: gridData, isLoadingField: false });
+      } catch (err) {
+        set({ fieldData: null, isLoadingField: false });
+      }
       return;
     }
     

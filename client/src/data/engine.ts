@@ -24,10 +24,13 @@ export const lons = Array.from(
 
 const dataCache = new Map<string, any>();
 
+
 export const getGridData = async (params: {
   variableId: string;
   depth: number;
   timeIndex: number;
+  dataMode: 'demo' | 'api';
+  activeDatasetId: string | null;
 }) => {
   const { activeDatasetId } = useOceanStore.getState();
 
@@ -35,7 +38,8 @@ export const getGridData = async (params: {
     return [];
   }
 
-  const cacheKey = `${activeDatasetId}_${params.variableId}_${params.depth}_${params.timeIndex}`;
+  const { variableId, depth, timeIndex, dataMode } = params;
+  const cacheKey = `${dataMode}_${activeDatasetId}_${variableId}_${depth}_${timeIndex}`;
   if (dataCache.has(cacheKey)) {
     return dataCache.get(cacheKey);
   }
