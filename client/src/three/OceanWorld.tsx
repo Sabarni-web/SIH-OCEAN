@@ -222,16 +222,21 @@ const OceanDataMesh = () => {
         const secondaryRipples = Math.sin((x + y) * 0.6 + t * 1.6) * 0.10;
         pos.setZ(i, primaryWave + secondaryRipples);
 
-        // Normalize geographical space across Indian Ocean
-        const latNorm = (y + sizeDepth / 2) / sizeDepth; // 0 = South (30°S), 1 = North (25°N)
-        const lonNorm = (x + sizeWidth / 2) / sizeWidth; // 0 = West (40°E), 1 = East (105°E)
+        // Normalize geographical space across requested bounds
+        const latNorm = (y + sizeDepth / 2) / sizeDepth; // 0 = South, 1 = North
+        const lonNorm = (x + sizeWidth / 2) / sizeWidth; // 0 = West, 1 = East
 
         let val = 26;
         if (selectedVariable === 'temperature') {
           if (activeSST && activeSST.length > 0) {
-            // Real satellite Sea Surface Temperature interpolated from Copernicus/Open-Meteo
-            const geoLat = -30 + latNorm * 55;
-            const geoLon = 40 + lonNorm * 65;
+            // Real satellite Sea Surface Temperature interpolated from API
+            const b = useOceanStore.getState().viewBounds;
+            const latRange = b.maxLat - b.minLat;
+            const lonRange = b.maxLon - b.minLon;
+            
+            const geoLat = b.minLat + latNorm * latRange;
+            const geoLon = b.minLon + lonNorm * lonRange;
+            
             const realTemp = interpolateSST(activeSST, geoLat, geoLon);
             // Apply vertical depth decay if depth slider is moved
             val = Math.max(1.5, realTemp - (selectedDepth / 1600) * (realTemp - 1.5));

@@ -5,7 +5,11 @@ import { useComparisonStore } from '../../store/useComparisonStore';
 import { useOceanStore } from '../../store/useOceanStore';
 import { datasetService } from '../../services/api';
 
-export const ComparisonPanel: React.FC = () => {
+export interface ComparisonPanelProps {
+  inline?: boolean;
+}
+
+export const ComparisonPanel: React.FC<ComparisonPanelProps> = ({ inline = false }) => {
   const { isComparisonOpen, setIsComparisonOpen, selectedObservationId, spatialTolerance, setSpatialTolerance, depthTolerance, setDepthTolerance } = useComparisonStore();
   const { activeDatasetId, selectedVariable } = useOceanStore();
   
@@ -14,7 +18,7 @@ export const ComparisonPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isComparisonOpen || !selectedObservationId) return;
+    if ((!isComparisonOpen && !inline) || !selectedObservationId) return;
 
     const fetchComparison = async () => {
       setLoading(true);
@@ -45,22 +49,23 @@ export const ComparisonPanel: React.FC = () => {
     fetchComparison();
   }, [isComparisonOpen, selectedObservationId, activeDatasetId, selectedVariable, spatialTolerance, depthTolerance]);
 
-  if (!isComparisonOpen) return null;
+  if (!isComparisonOpen && !inline) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in p-4">
-      <div className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-border/50 sticky top-0 bg-background z-10">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold text-white">Model vs Observation Analysis</h2>
-          </div>
+  const content = (
+    <div className={`bg-background border border-border rounded-xl shadow-2xl w-full flex flex-col ${inline ? 'h-full' : 'max-w-4xl max-h-[90vh] overflow-y-auto'}`}>
+      
+      {/* Header */}
+      <div className="flex justify-between items-center p-4 border-b border-border/50 sticky top-0 bg-background z-10">
+        <div className="flex items-center gap-3">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-bold text-white">Model vs Observation Analysis</h2>
+        </div>
+        {!inline && (
           <button onClick={() => setIsComparisonOpen(false)} className="text-textSecondary hover:text-white">
             <X className="w-5 h-5" />
           </button>
-        </div>
+        )}
+      </div>
 
         <div className="p-6 flex-1 flex flex-col gap-6">
           {error ? (
@@ -138,7 +143,14 @@ export const ComparisonPanel: React.FC = () => {
             </>
           ) : null}
         </div>
-      </div>
+    </div>
+  );
+
+  if (inline) return content;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in p-4">
+      {content}
     </div>
   );
 };

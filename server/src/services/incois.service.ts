@@ -318,27 +318,50 @@ export const INCOIS_BGC_FLOATS: BGCObservation[] = [
   }
 ];
 
-export const fetchLiveIncoisArgoFloats = async (startDate?: string, endDate?: string): Promise<ArgoFloat[]> => {
-  try {
-    const baseUrl = getErddapBaseUrl();
-    const datasetId = getArgoDatasetId();
-    const fields = ['PLATFORM_NUMBER', 'time', 'latitude', 'longitude', 'PRES', 'TEMP', 'PSAL'].join(',');
-    
-    let timeFilter = '';
-    const is7d = startDate === '7d';
-    const is30d = startDate === '30d';
+export const fetchLiveIncoisArgoFloats = async (startDate?: string, endDate?: string, bounds?: any): Promise<ArgoFloat[]> => {
+  // Array of global ERDDAP nodes to try in case one is blocked or down (like NOAA often is in some regions)
+  const ERDDAP_NODES = [
+    { url: 'https://coastwatch.pfeg.noaa.gov/erddap', dataset: 'argoFloats', fields: ['platform_number', 'time', 'latitude', 'longitude', 'pres', 'temp', 'psal'] },
+    { url: 'https://www.ifremer.fr/erddap', dataset: 'ArgoFloats', fields: ['platform_number', 'time', 'latitude', 'longitude', 'pres', 'temp', 'psal'] },
+    { url: 'https://erddap.incois.gov.in/erddap', dataset: 'Indian_ARGO_Floats', fields: ['PLATFORM_NUMBER', 'time', 'latitude', 'longitude', 'PRES', 'TEMP', 'PSAL'] }
+  ];
 
-    if (!is7d && !is30d && startDate && endDate) {
-      timeFilter = `&time>=${startDate}T00:00:00Z&time<=${endDate}T23:59:59Z`;
-    }
+  let timeFilter = '';
+  const is7d = startDate === '7d';
+  const is30d = startDate === '30d';
 
-    // Query near-surface telemetry across full Indian Ocean basin bounds
-    const url = `${baseUrl}/tabledap/${datasetId}.json?${fields}&PRES<=5&latitude>=-28&latitude<=26&longitude>=42&longitude<=105${timeFilter}&orderByLimit(%2220000%22)`;
-    
-    const response = await fetchJson(url);
-    if (!response.table || !response.table.rows) {
-      return [];
+  if (!is7d && !is30d && startDate && endDate) {
+    timeFilter = `&time>=${startDate}T00:00:00Z&time<=${endDate}T23:59:59Z`;
+  }
+
+  const b = bounds || { minLat: -90, maxLat: 90, minLon: -180, maxLon: 180 };
+  
+  let response: any = null;
+  let successfulNode = null;
+
+  // Try each ERDDAP node until one succeeds
+  for (const node of ERDDAP_NODES) {
+    try {
+      const fieldStr = node.fields.join(',');
+      const presField = node.fields[4]; // 'pres' or 'PRES'
+      const latField = node.fields[2];
+      const lonField = node.fields[3];
+      
+      const url = `${node.url}/tabledap/${node.dataset}.json?${fieldStr}&${presField}<=5&${latField}>=${b.minLat}&${latField}<=${b.maxLat}&${lonField}>=${b.minLon}&${lonField}<=${b.maxLon}${timeFilter}&orderByLimit(%2220000%22)`;
+      
+      response = await fetchJson(url);
+      if (response && response.table && response.table.rows) {
+        successfulNode = node;
+        break; // Successfully fetched data, exit loop
+      }
+    } catch (err) {
+      console.warn(`[INCOIS Service] Failed to fetch from ERDDAP node: ${node.url}. Trying next fallback...`);
     }
+  }
+
+  if (!response || !response.table || !response.table.rows) {
+    return [];
+  }
 
     const rows = response.table.rows;
     const byFloat = new Map<string, any[]>();
@@ -388,24 +411,20 @@ export const fetchLiveIncoisArgoFloats = async (startDate?: string, endDate?: st
     });
 
     return floatsList;
-  } catch (err: any) {
-    console.error('[INCOIS Service] Failed to fetch live data from INCOIS ERDDAP:', err.message);
-    return [];
-  }
 };
 
-export const fetchAllIncoisObservations = async (startDate?: string, endDate?: string): Promise<Observation[]> => {
+export const fetchAllIncoisObservations = async (startDate?: string, endDate?: string, bounds?: any): Promise<Observation[]> => {
   const isCustomTime = Boolean(startDate || endDate);
   const now = Date.now();
   
-  if (!isCustomTime && cachedObservations.length > 0 && now - lastFetchTime < CACHE_DURATION_MS) {
+  if (!isCustomTime && cachedObservations.length > 0 && now - lastFetchTime < CACHE_DURATION_MS && !bounds) {
     return cachedObservations;
   }
 
-  const liveArgoFloats = await fetchLiveIncoisArgoFloats(startDate, endDate);
+  const liveArgoFloats = await fetchLiveIncoisArgoFloats(startDate, endDate, bounds);
 
   // Combine all active Indian Ocean observation fleets (Moorings, Gliders, CTD, BGC, Argo)
-  const combined = [
+  let combined = [
     ...INCOIS_MOORED_BUOYS,
     ...INCOIS_GLIDERS,
     ...INCOIS_CTD_STATIONS,
@@ -413,7 +432,17 @@ export const fetchAllIncoisObservations = async (startDate?: string, endDate?: s
     ...liveArgoFloats
   ];
 
-  if (!isCustomTime) {
+  if (bounds) {
+    combined = combined.filter(obs => 
+      obs.latitude >= bounds.minLat && obs.latitude <= bounds.maxLat &&
+      obs.longitude >= bounds.minLon && obs.longitude <= bounds.maxLon
+    );
+  }
+
+  // If the region lacks data (e.g. NOAA ERDDAP fails or returns 0), we just return whatever we have.
+  // The user explicitly requested ALL REAL data, so we won't inject mock sensors anymore.
+  
+  if (!isCustomTime && !bounds) {
     cachedObservations = combined;
     lastFetchTime = now;
   }

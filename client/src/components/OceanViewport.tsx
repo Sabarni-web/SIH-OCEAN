@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layers, Maximize, Settings } from 'lucide-react';
 import { OceanScene } from '../three/OceanScene';
 import { ReplayTimeline } from './ReplayTimeline';
 import { useOceanStore } from '../store/useOceanStore';
 import { OCEAN_VARIABLES } from '../data/variables';
 import { COLOR_SCALES } from '../three/colorScales';
+import { LocationSetter } from './panels/LocationSetter';
 
 const TABS = [
   { id: '3d', label: '3D Ocean View' },
@@ -15,6 +16,7 @@ const TABS = [
 
 export const OceanViewport: React.FC = () => {
   const { visualizationMode, setVisualizationMode, selectedVariable } = useOceanStore();
+  const [showLocationSetter, setShowLocationSetter] = useState(false);
 
   return (
     <div className="flex flex-col h-full glass-panel-elevated rounded-xl border border-border flex-1 relative">
@@ -42,11 +44,19 @@ export const OceanViewport: React.FC = () => {
           <button className="p-1.5 text-textSecondary hover:text-primary transition-colors" title="Settings">
             <Settings className="w-4 h-4" />
           </button>
-          <button className="p-1.5 text-textSecondary hover:text-primary transition-colors border-l border-border/50 pl-3 ml-1" title="Fullscreen">
+          <button 
+            className={`p-1.5 transition-colors border-l border-border/50 pl-3 ml-1 ${showLocationSetter ? 'text-primary' : 'text-textSecondary hover:text-primary'}`}
+            title="Set Location"
+            onClick={() => setShowLocationSetter(!showLocationSetter)}
+          >
             <Maximize className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {showLocationSetter && (
+        <LocationSetter onClose={() => setShowLocationSetter(false)} />
+      )}
 
       {/* Viewport Content */}
       <div className="flex-1 relative overflow-hidden rounded-b-xl">

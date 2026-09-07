@@ -98,9 +98,37 @@ export const GlobalOceanControls: React.FC = () => {
       <div className="flex items-center gap-4 w-full md:w-auto">
         <div className="flex flex-col">
           <label className="text-xs text-textSecondary uppercase tracking-wider mb-1 font-semibold">Region</label>
-          <select className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary">
+          <select 
+            value={useOceanStore(s => s.selectedRegion)}
+            onChange={async (e) => {
+              const val = e.target.value;
+              useOceanStore.getState().setSelectedRegion(val);
+              
+              // Predefined bounds matching LocationSetter
+              const PRESETS: Record<string, any> = {
+                'global': { minLat: -80, maxLat: 80, minLon: -180, maxLon: 180, latRes: 4, lonRes: 4 },
+                'indian_ocean': { minLat: -30, maxLat: 30, minLon: 40, maxLon: 110, latRes: 2, lonRes: 2 },
+                'pacific_ocean': { minLat: -60, maxLat: 60, minLon: 110, maxLon: 290, latRes: 3, lonRes: 3 },
+                'atlantic_ocean': { minLat: -60, maxLat: 60, minLon: -70, maxLon: 20, latRes: 3, lonRes: 3 },
+                'southern_ocean': { minLat: -90, maxLat: -50, minLon: -180, maxLon: 180, latRes: 3, lonRes: 3 },
+                'arctic_ocean': { minLat: 60, maxLat: 90, minLon: -180, maxLon: 180, latRes: 3, lonRes: 3 }
+              };
+              
+              if (PRESETS[val]) {
+                useOceanStore.getState().setViewBounds(PRESETS[val]);
+                window.dispatchEvent(new Event('reset-camera'));
+                await useOceanStore.getState().fetchFieldData();
+                await useObservationStore.getState().fetchObservations();
+              }
+            }}
+            className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary"
+          >
+            <option value="global">Global Ocean</option>
             <option value="indian_ocean">Indian Ocean</option>
-            <option value="global">Global</option>
+            <option value="pacific_ocean">Pacific Ocean</option>
+            <option value="atlantic_ocean">Atlantic Ocean</option>
+            <option value="southern_ocean">Southern Ocean</option>
+            <option value="arctic_ocean">Arctic Ocean</option>
           </select>
         </div>
         

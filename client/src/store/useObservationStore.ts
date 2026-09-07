@@ -60,9 +60,19 @@ export const useObservationStore = create<ObservationState>((set, get) => ({
 
   fetchObservations: async () => {
     const { startDate, endDate } = get();
+    // Dynamically import useOceanStore state to avoid circular dependency
+    const { useOceanStore } = await import('./useOceanStore');
+    const { viewBounds } = useOceanStore.getState();
+
     try {
       set({ loading: true });
-      const params: any = { limit: 1200 };
+      const params: any = { 
+        limit: 1200,
+        minLat: viewBounds.minLat,
+        maxLat: viewBounds.maxLat,
+        minLon: viewBounds.minLon,
+        maxLon: viewBounds.maxLon
+      };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 

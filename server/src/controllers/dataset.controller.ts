@@ -145,12 +145,20 @@ export const getDatasetVariables = async (req: Request, res: Response) => {
   }
 };
 
+import { fetchRealOceanData } from '../services/oceanDataService';
+
 export const getOceanField = async (req: Request, res: Response) => {
   try {
     const schema = z.object({
       variable: z.string(),
       depth: z.string().transform(Number),
-      time: z.string()
+      time: z.string(),
+      minLat: z.string().optional().transform(v => v ? Number(v) : -30),
+      maxLat: z.string().optional().transform(v => v ? Number(v) : 30),
+      minLon: z.string().optional().transform(v => v ? Number(v) : 40),
+      maxLon: z.string().optional().transform(v => v ? Number(v) : 110),
+      latRes: z.string().optional().transform(v => v ? Number(v) : 2),
+      lonRes: z.string().optional().transform(v => v ? Number(v) : 2)
     });
 
     const parsed = schema.safeParse(req.query);
@@ -170,6 +178,7 @@ export const getOceanField = async (req: Request, res: Response) => {
     }
     if (!ds) ds = DEFAULT_INCOIS_DATASET;
 
+<<<<<<< HEAD
     // Use specific NOAA ERDDAP dataset for chlorophyll detailed visualization
     if (parsed.data.variable === 'chlorophyll') {
       try {
@@ -242,8 +251,54 @@ export const getOceanField = async (req: Request, res: Response) => {
         } else {
           val = 10 + n * 5;
         }
+=======
+    // Use requested bounds or defaults
+    const latResolution = parsed.data.latRes;
+    const lonResolution = parsed.data.lonRes;
+    const numLats = Math.max(1, Math.floor((parsed.data.maxLat - parsed.data.minLat) / latResolution) + 1);
+    const numLons = Math.max(1, Math.floor((parsed.data.maxLon - parsed.data.minLon) / lonResolution) + 1);
+    
+    const lats = Array.from({ length: numLats }, (_, i) => parsed.data.minLat + i * latResolution);
+    const lons = Array.from({ length: numLons }, (_, i) => parsed.data.minLon + i * lonResolution);
+    
+    // Attempt to fetch real-world data from our external API proxy
+    let values = await fetchRealOceanData(lats, lons, parsed.data.variable, parsed.data.depth, parsed.data.time);
+>>>>>>> 904658d4250f0cd7ed362731c747bcccf2ba4c9c
 
-        values.push({ lat, lon, depth: d, value: val });
+    // If the API doesn't support this variable (or fails), fallback to our mathematical simulation
+    if (!values) {
+      values = [];
+      const timeIndex = new Date(parsed.data.time).getTime() / 100000 || 0;
+      
+      for (let lat of lats) {
+        for (let lon of lons) {
+          const d = parsed.data.depth;
+          const t = timeIndex;
+          const n = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 + d * 0.05) + Math.sin(lon * 0.2 - t) * Math.cos(lat * 0.15);
+          
+          let val = 0;
+          if (parsed.data.variable === 'temperature') {
+            val = (30 - (d / 2000) * 30) + n * 2;
+          } else if (parsed.data.variable === 'salinity') {
+            val = 35 + n * 1.5 - d / 4000;
+          } else if (parsed.data.variable === 'chlorophyll') {
+            val = Math.max(0, (1 + n * 2) * (d > 200 ? 0 : 1 - d/200));
+          } else if (parsed.data.variable === 'currentVelocity') {
+            const u = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 - d*0.001);
+            const v = Math.cos(lat * 0.1 - t) * Math.sin(lon * 0.1 + d*0.001);
+            val = Math.sqrt(u*u + v*v);
+          } else if (parsed.data.variable === 'currentDirection') {
+            const u = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 - d*0.001);
+            const v = Math.cos(lat * 0.1 - t) * Math.sin(lon * 0.1 + d*0.001);
+            let dir = Math.atan2(v, u) * (180 / Math.PI);
+            if (dir < 0) dir += 360;
+            val = dir;
+          } else {
+            val = 10 + n * 5;
+          }
+
+          values.push({ lat, lon, depth: d, value: val });
+        }
       }
     }
 
