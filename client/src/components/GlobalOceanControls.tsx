@@ -67,16 +67,7 @@ export const GlobalOceanControls: React.FC = () => {
     }
   };
 
-  // Time animation effect
-  useEffect(() => {
-    let interval: number;
-    if (isPlaying) {
-      interval = window.setInterval(() => {
-        setSelectedTime((selectedTime + 1) % 24); // 24 hour mock loop
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, selectedTime, setSelectedTime]);
+  // Time animation effect is no longer needed since we use actual forecast frames via replay mode
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,23 +269,31 @@ export const GlobalOceanControls: React.FC = () => {
         <div className="flex items-center gap-2">
           {/* Forward Forecast Play Button */}
           <button 
-            onClick={() => {
-              if (replayMode) stopReplay();
-              togglePlay();
+            onClick={async () => {
+              if (replayMode) {
+                stopReplay();
+              } else {
+                const today = new Date();
+                const future = new Date(today.getTime() + 3 * 24 * 3600 * 1000);
+                // Keep datePreset as 'live' to indicate forecast mode
+                await startReplay(today.toISOString().slice(0, 10), future.toISOString().slice(0, 10));
+              }
             }}
             className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-              isPlaying
+              replayMode && datePreset === 'live'
                 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.3)]'
                 : 'bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50'
             }`}
-            title={isPlaying ? 'Pause Forecast Simulation' : 'Run 24h Forward Forecast'}
+            title={replayMode && datePreset === 'live' ? 'Stop Forecast Simulation' : 'Run 3-Day Forward Forecast'}
           >
-            {isPlaying ? (
+            {replayLoading && datePreset === 'live' ? (
+              <span className="w-3.5 h-3.5 flex items-center justify-center"><div className="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full" /></span>
+            ) : replayMode && datePreset === 'live' ? (
               <span className="w-3.5 h-3.5 flex items-center justify-center font-bold">||</span>
             ) : (
               <Play className="w-3.5 h-3.5 fill-primary" />
             )}
-            <span>{isPlaying ? 'Pause' : 'Forecast'}</span>
+            <span>{replayLoading && datePreset === 'live' ? 'Loading...' : replayMode && datePreset === 'live' ? 'Stop' : 'Forecast'}</span>
           </button>
 
           {/* Historical Temporal Replay Button (Available for 7d, 30d, and Custom ranges) */}

@@ -54,8 +54,8 @@ const AlertMarkerItem: React.FC<{ alert: any }> = ({ alert }) => {
         <ringGeometry args={[0.2, 0.35, 32]} />
         <meshBasicMaterial color={color} transparent opacity={0.6} side={THREE.DoubleSide} />
       </mesh>
-      
-      <mesh 
+
+      <mesh
         onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
         onPointerOut={() => setHovered(false)}
       >
@@ -128,28 +128,28 @@ const DepthSliceMesh = () => {
       } else if (selectedVariable === 'chlorophyll') {
         // Smooth organic distribution
         const dist = Math.sqrt(x * x + z * z);
-        const coastalBoost = Math.max(0, (dist - 8) * 0.15); 
+        const coastalBoost = Math.max(0, (dist - 8) * 0.15);
         const organicSwirl = Math.sin(x * 0.4 + z * 0.3) * Math.cos(x * 0.2 - z * 0.5) * 0.8;
         const baseValue = 0.8 + coastalBoost + organicSwirl;
         val = Math.max(0.01, Math.min(5.0, baseValue * (selectedDepth < 200 ? (1 - selectedDepth / 200) : 0.05)));
       } else if (selectedVariable === 'dissolvedOxygen') {
         const latNorm = (z + sizeDepth / 2) / sizeDepth;
         // Stronger North-South gradient and dynamic surface patterns (upwelling, currents)
-        const surfaceO2 = 210 + (0.5 - latNorm) * 90; 
+        const surfaceO2 = 210 + (0.5 - latNorm) * 90;
         const surfaceVariations = Math.sin(x * 0.4 + z * 0.3) * 30 + Math.cos(x * 0.2 - z * 0.5) * 20;
-        
+
         let omzFactor = 1.0;
         // Start OMZ impact from 50m to make it highly visible
         if (selectedDepth > 50 && selectedDepth < 1500) {
-           // Arabian Sea OMZ (North-West) - enlarged radius
-           const arabianOMZ = (x < 2 && z > -2) ? Math.max(0, 1 - Math.sqrt((x+6)*(x+6) + (z-6)*(z-6)) * 0.08) : 0;
-           // Bay of Bengal OMZ (North-East)
-           const bengalOMZ = (x > 2 && z > 0) ? Math.max(0, 1 - Math.sqrt((x-6)*(x-6) + (z-4)*(z-4)) * 0.12) * 0.7 : 0;
-           
-           const depthIntensity = Math.max(0, 1 - Math.abs(selectedDepth - 400) / 400);
-           omzFactor = 1.0 - (arabianOMZ + bengalOMZ) * depthIntensity * 0.95;
+          // Arabian Sea OMZ (North-West) - enlarged radius
+          const arabianOMZ = (x < 2 && z > -2) ? Math.max(0, 1 - Math.sqrt((x + 6) * (x + 6) + (z - 6) * (z - 6)) * 0.08) : 0;
+          // Bay of Bengal OMZ (North-East)
+          const bengalOMZ = (x > 2 && z > 0) ? Math.max(0, 1 - Math.sqrt((x - 6) * (x - 6) + (z - 4) * (z - 4)) * 0.12) * 0.7 : 0;
+
+          const depthIntensity = Math.max(0, 1 - Math.abs(selectedDepth - 400) / 400);
+          omzFactor = 1.0 - (arabianOMZ + bengalOMZ) * depthIntensity * 0.95;
         } else if (selectedDepth >= 1500) {
-           omzFactor = 0.5 + Math.min(0.4, (selectedDepth - 1500) * 0.00015); // Deep recovery
+          omzFactor = 0.5 + Math.min(0.4, (selectedDepth - 1500) * 0.00015); // Deep recovery
         }
       } else if (selectedVariable === 'currentVelocity') {
         const latNorm = (z + sizeDepth / 2) / sizeDepth;
@@ -189,11 +189,11 @@ const OceanDataMesh = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { selectedVariable, layers, selectedTime, selectedDepth } = useOceanStore();
   const { verticalExaggeration, bathymetryEnabled, gridEnabled } = useAnalyticsStore();
-  
+
   const resolution = 64;
   const sizeWidth = SCENE_DIMENSIONS.width;
   const sizeDepth = SCENE_DIMENSIONS.depth;
-  
+
   const geometry = useMemo(() => {
     const geom = new THREE.PlaneGeometry(sizeWidth, sizeDepth, resolution, resolution);
     const count = geom.attributes.position.count;
@@ -216,7 +216,7 @@ const OceanDataMesh = () => {
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const y = pos.getY(i);
-        
+
         // Multi-frequency dynamic ocean wave displacement
         const primaryWave = Math.sin(x * 0.35 + t * 1.2) * Math.cos(y * 0.35 + t * 0.9) * 0.22;
         const secondaryRipples = Math.sin((x + y) * 0.6 + t * 1.6) * 0.10;
@@ -260,23 +260,23 @@ const OceanDataMesh = () => {
         } else if (selectedVariable === 'chlorophyll') {
           // Smooth organic bloom simulation
           const dist = Math.sqrt(x * x + y * y);
-          const coastalBoost = Math.max(0, (dist - 8) * 0.15); 
+          const coastalBoost = Math.max(0, (dist - 8) * 0.15);
           const organicSwirl = Math.sin(x * 0.4 + y * 0.3 + t * 0.5) * Math.cos(x * 0.2 - y * 0.5 + t * 0.3) * 0.8;
           const baseValue = 0.8 + coastalBoost + organicSwirl;
           val = Math.max(0.01, Math.min(5.0, baseValue * (selectedDepth < 200 ? (1 - selectedDepth / 200) : 0.05)));
         } else if (selectedVariable === 'dissolvedOxygen') {
           // Stronger North-South gradient and dynamic surface patterns
-          const surfaceO2 = 210 + (0.5 - latNorm) * 90; 
+          const surfaceO2 = 210 + (0.5 - latNorm) * 90;
           const surfaceVariations = Math.sin(x * 0.4 + y * 0.3 + t * 0.5) * 30 + Math.cos(x * 0.2 - y * 0.5 + t * 0.3) * 20;
-          
+
           let omzFactor = 1.0;
           if (selectedDepth > 50 && selectedDepth < 1500) {
-             const arabianOMZ = (x < 2 && y > -2) ? Math.max(0, 1 - Math.sqrt((x+6)*(x+6) + (y-6)*(y-6)) * 0.08) : 0;
-             const bengalOMZ = (x > 2 && y > 0) ? Math.max(0, 1 - Math.sqrt((x-6)*(x-6) + (y-4)*(y-4)) * 0.12) * 0.7 : 0;
-             const depthIntensity = Math.max(0, 1 - Math.abs(selectedDepth - 400) / 400);
-             omzFactor = 1.0 - (arabianOMZ + bengalOMZ) * depthIntensity * 0.95;
+            const arabianOMZ = (x < 2 && y > -2) ? Math.max(0, 1 - Math.sqrt((x + 6) * (x + 6) + (y - 6) * (y - 6)) * 0.08) : 0;
+            const bengalOMZ = (x > 2 && y > 0) ? Math.max(0, 1 - Math.sqrt((x - 6) * (x - 6) + (y - 4) * (y - 4)) * 0.12) * 0.7 : 0;
+            const depthIntensity = Math.max(0, 1 - Math.abs(selectedDepth - 400) / 400);
+            omzFactor = 1.0 - (arabianOMZ + bengalOMZ) * depthIntensity * 0.95;
           } else if (selectedDepth >= 1500) {
-             omzFactor = 0.5 + Math.min(0.4, (selectedDepth - 1500) * 0.00015); // Deep recovery
+            omzFactor = 0.5 + Math.min(0.4, (selectedDepth - 1500) * 0.00015); // Deep recovery
           }
           val = (surfaceO2 + surfaceVariations) * omzFactor;
         }
@@ -284,7 +284,7 @@ const OceanDataMesh = () => {
         const color = getVariableColor(selectedVariable, val);
         colors.setXYZ(i, color.r, color.g, color.b);
       }
-      
+
       pos.needsUpdate = true;
       colors.needsUpdate = true;
       geom.computeVertexNormals();
@@ -296,17 +296,17 @@ const OceanDataMesh = () => {
   return (
     <group>
       {layers.model && (
-        <mesh 
-          ref={meshRef} 
-          geometry={geometry} 
-          rotation={[-Math.PI / 2, 0, 0]} 
+        <mesh
+          ref={meshRef}
+          geometry={geometry}
+          rotation={[-Math.PI / 2, 0, 0]}
           position={[0, 0, 0]}
           onClick={() => selectObservation(null)}
         >
-          <meshStandardMaterial 
-            vertexColors 
-            roughness={0.25} 
-            metalness={0.15} 
+          <meshStandardMaterial
+            vertexColors
+            roughness={0.25}
+            metalness={0.15}
             side={THREE.DoubleSide}
             transparent
             opacity={0.88}
@@ -325,7 +325,7 @@ const OceanDataMesh = () => {
       {gridEnabled && (
         <VolumeBounds />
       )}
-      
+
       <AlertMarkers />
     </group>
   );
@@ -354,7 +354,7 @@ export const OceanWorld: React.FC = () => {
       <ambientLight intensity={1.2} color="#ffffff" />
       <directionalLight position={[15, 30, 15]} intensity={2.0} color="#ffffff" castShadow />
       <directionalLight position={[-15, -15, -15]} intensity={0.8} color="#00e5ff" />
-      
+
       {/* 3D Indian Ocean Landmasses, Coastlines, and Geo Labels */}
       <LandmassRenderer />
 
@@ -387,8 +387,8 @@ export const OceanWorld: React.FC = () => {
 
       {/* In-Situ Observation System (Argo Floats, Moorings, Gliders, CTD, BGC) */}
       <ObservationSystem />
-      
-      <OrbitControls 
+
+      <OrbitControls
         ref={controlsRef}
         enablePan={true}
         enableZoom={true}

@@ -50,7 +50,7 @@ export const DatasetSelector: React.FC = () => {
         <h3 className="text-sm font-semibold uppercase tracking-wider text-textSecondary flex items-center gap-2">
           <Database className="w-4 h-4 text-primary" /> Model Dataset
         </h3>
-        
+
         <span className="px-2.5 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-[11px] font-bold tracking-wider">
           LIVE API
         </span>
@@ -62,9 +62,9 @@ export const DatasetSelector: React.FC = () => {
             <AlertCircle className="w-3 h-3" /> {error}
           </div>
         )}
-        
+
         <div className="flex items-center gap-2">
-          <select 
+          <select
             className="flex-1 bg-surfaceElevated border border-border/50 rounded-lg text-sm p-2 text-white outline-none focus:border-primary transition-colors cursor-pointer"
             value={activeDatasetId || ''}
             onChange={(e) => setActiveDatasetId(e.target.value || null)}
@@ -79,7 +79,7 @@ export const DatasetSelector: React.FC = () => {
               );
             })}
           </select>
-          <button 
+          <button
             className="p-2 bg-surfaceElevated hover:bg-surfaceLight rounded-lg border border-border/50 transition-colors"
             onClick={fetchDatasets}
             title="Refresh Datasets"
@@ -89,8 +89,8 @@ export const DatasetSelector: React.FC = () => {
         </div>
 
         <div className="relative overflow-hidden group">
-          <input 
-            type="file" 
+          <input
+            type="file"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={handleUpload}
             disabled={uploading}

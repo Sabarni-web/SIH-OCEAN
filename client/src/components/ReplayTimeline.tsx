@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { Play, Pause, X, FastForward, Clock, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useReplayStore } from '../store/useReplayStore';
+import { useObservationStore } from '../store/useObservationStore';
 
 export const ReplayTimeline: React.FC = () => {
+  const { datePreset } = useObservationStore();
   const {
     replayMode,
     replayLoading,
@@ -53,9 +55,15 @@ export const ReplayTimeline: React.FC = () => {
         {/* Header: Title, Sampling Strategy, Timestamp & Exit */}
         <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md">
-              <History className="w-3.5 h-3.5 animate-spin-slow" /> Temporal Replay
-            </span>
+            {datePreset === 'live' ? (
+              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/20 border border-cyan-500/40 px-2 py-0.5 rounded-md shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+                <FastForward className="w-3.5 h-3.5 animate-pulse" /> Forward Forecast
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md shadow-[0_0_10px_rgba(251,191,36,0.15)]">
+                <History className="w-3.5 h-3.5 animate-spin-slow" /> Temporal Replay
+              </span>
+            )}
             {replayMeta && (
               <span className="text-[10px] text-cyan-300 font-mono bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded">
                 {replayMeta.totalDays} Days ({replayMeta.samplingStrategy})

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import type { Dataset, DatasetVariable, DatasetStatus } from '../../../shared/types';
 
-export interface IDatasetDocument extends Omit<Dataset, 'id'>, Document {}
+export interface IDatasetDocument extends Omit<Dataset, 'id'>, Document { }
 
 const DatasetVariableSchema = new Schema<DatasetVariable>({
   id: { type: String, required: true },

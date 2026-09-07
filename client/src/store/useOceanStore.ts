@@ -9,7 +9,7 @@ interface OceanState {
   setSelectedVariable: (variable: string) => void;
   selectedDepth: number;
   setSelectedDepth: (depth: number) => void;
-  
+
   // Visualization layers
   layers: {
     model: boolean;
@@ -22,7 +22,7 @@ interface OceanState {
     isosurface: boolean;
   };
   toggleLayer: (layer: keyof OceanState['layers']) => void;
-  
+
   // App state
   isPlaying: boolean;
   togglePlay: () => void;
@@ -44,13 +44,13 @@ interface OceanState {
 export const useOceanStore = create<OceanState>((set, get) => ({
   selectedRegion: 'indian_ocean',
   setSelectedRegion: (region) => set({ selectedRegion: region }),
-  
+
   selectedVariable: 'temperature',
   setSelectedVariable: (variable) => set({ selectedVariable: variable }),
-  
+
   selectedDepth: 0,
   setSelectedDepth: (depth) => set({ selectedDepth: depth }),
-  
+
   layers: {
     model: true,
     argo: true,
@@ -64,18 +64,18 @@ export const useOceanStore = create<OceanState>((set, get) => ({
   toggleLayer: (layer) => set((state) => ({
     layers: { ...state.layers, [layer]: !state.layers[layer] }
   })),
-  
+
   isPlaying: false,
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
   selectedTime: 0,
   setSelectedTime: (time) => set({ selectedTime: time }),
-  
+
   visualizationMode: '3d',
   setVisualizationMode: (mode) => set({ visualizationMode: mode }),
 
   dataMode: 'api',
   setDataMode: (mode) => set({ dataMode: mode }),
-  
+
   activeDatasetId: null,
   setActiveDatasetId: (id) => set({ activeDatasetId: id }),
 
@@ -99,7 +99,7 @@ export const useOceanStore = create<OceanState>((set, get) => ({
       }
       return;
     }
-    
+
     try {
       set({ isLoadingField: true });
       const timeIso = new Date(Date.now() + selectedTime * 3600000).toISOString();

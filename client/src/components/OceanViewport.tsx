@@ -17,7 +17,7 @@ export const OceanViewport: React.FC = () => {
   const { visualizationMode, setVisualizationMode, selectedVariable } = useOceanStore();
 
   return (
-    <div className="flex flex-col h-[620px] glass-panel-elevated rounded-xl border border-border flex-1 relative">
+    <div className="flex flex-col h-full glass-panel-elevated rounded-xl border border-border flex-1 relative">
       {/* Header / Tabs */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-surface/50 rounded-t-xl">
         <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -25,17 +25,16 @@ export const OceanViewport: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setVisualizationMode(tab.id as any)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                visualizationMode === tab.id
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${visualizationMode === tab.id
                   ? 'bg-primary/20 text-primary border border-primary/40 shadow-[0_0_10px_rgba(0,212,255,0.2)]'
                   : 'text-textSecondary hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button className="p-1.5 text-textSecondary hover:text-primary transition-colors" title="Layers">
             <Layers className="w-4 h-4" />
@@ -55,13 +54,13 @@ export const OceanViewport: React.FC = () => {
 
         {/* Temporal Replay Scrubber Bar */}
         <ReplayTimeline />
-        
+
         {/* Colorbar Overlay */}
         <div className="absolute right-4 bottom-8 glass-panel p-2 rounded-lg flex gap-2 z-20 shadow-2xl backdrop-blur-md">
           {(() => {
             const variable = OCEAN_VARIABLES[selectedVariable];
             if (!variable) return null;
-            
+
             const scaleConfig = COLOR_SCALES[variable.colorScale];
             if (!scaleConfig) return null;
 
@@ -72,7 +71,7 @@ export const OceanViewport: React.FC = () => {
 
             return (
               <>
-                <div 
+                <div
                   className="w-3.5 h-28 rounded border border-border/50"
                   style={{ background: `linear-gradient(to top, ${gradientStops})` }}
                 ></div>
