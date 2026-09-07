@@ -120,7 +120,7 @@ export const ComparisonPanel: React.FC<ComparisonPanelProps> = ({ inline = false
               {/* Profile Chart */}
               <div className="glass-panel p-4 rounded-xl flex-1 min-h-[400px]">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-textSecondary mb-4">Depth Profile Comparison ({selectedVariable})</h3>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={400}>
                   <LineChart
                     data={data.chartData}
                     layout="vertical"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Ship, Droplets, Thermometer, Layers, Compass, Activity } from 'lucide-react';
+import { Ship, Droplets, Thermometer, Layers, Compass, Activity, RefreshCw } from 'lucide-react';
 import { observationService } from '../services/api';
 import type { CTDObservation } from '../../../shared/types';
 import Plot from 'react-plotly.js';
@@ -49,7 +49,7 @@ export const CTDPage: React.FC = () => {
           </p>
         </div>
         <span className="px-3 py-1 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full text-xs font-semibold">
-          {ctdStations.length} CRUISE STATIONS
+          {loading ? '...' : ctdStations.length} CRUISE STATIONS
         </span>
       </div>
 
@@ -58,7 +58,12 @@ export const CTDPage: React.FC = () => {
         <div className="lg:col-span-1 p-5 rounded-xl border border-border/50 bg-surface/50 backdrop-blur-md flex flex-col h-[700px]">
           <h2 className="text-lg font-semibold text-white mb-3">Hydrographic Stations</h2>
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-            {ctdStations.map((c) => {
+            {loading ? (
+              <div className="flex flex-col items-center justify-center h-full text-textSecondary gap-3">
+                 <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
+                 <p className="text-sm">Fetching hydrographic stations...</p>
+              </div>
+            ) : ctdStations.map((c) => {
               const isSelected = selectedCtd?.id === c.id;
               return (
                 <div

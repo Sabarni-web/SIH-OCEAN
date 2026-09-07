@@ -30,7 +30,8 @@ export const getObservations = async (req: Request, res: Response) => {
       let liveObs = await fetchAllIncoisObservations(
         startDate ? String(startDate) : undefined,
         endDate ? String(endDate) : undefined,
-        bounds
+        bounds,
+        type ? String(type) : undefined
       );
       if (type) {
         liveObs = liveObs.filter(o => o.type === type);

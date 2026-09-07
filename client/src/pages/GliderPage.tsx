@@ -38,7 +38,7 @@ export const GliderPage: React.FC = () => {
           </p>
         </div>
         <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-semibold">
-          {gliders.length} ACTIVE MISSIONS
+          {loading ? '...' : gliders.length} ACTIVE MISSIONS
         </span>
       </div>
 
@@ -47,7 +47,12 @@ export const GliderPage: React.FC = () => {
         <div className="lg:col-span-1 p-5 rounded-xl border border-border/50 bg-surface/50 backdrop-blur-md flex flex-col h-[700px]">
           <h2 className="text-lg font-semibold text-white mb-3">Glider Deployments</h2>
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-            {gliders.map((g) => {
+            {loading ? (
+              <div className="flex flex-col items-center justify-center h-full text-textSecondary gap-3">
+                 <RefreshCw className="w-8 h-8 animate-spin text-emerald-400" />
+                 <p className="text-sm">Fetching glider deployments...</p>
+              </div>
+            ) : gliders.map((g) => {
               const isSelected = selectedGlider?.id === g.id;
               return (
                 <div
