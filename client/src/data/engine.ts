@@ -32,21 +32,22 @@ export const getGridData = async (params: {
   dataMode: 'demo' | 'api';
   activeDatasetId: string | null;
 }) => {
-  const { activeDatasetId } = useOceanStore.getState();
+  const { activeDatasetId, viewBounds } = useOceanStore.getState();
 
   if (!activeDatasetId) {
     return [];
   }
 
   const { variableId, depth, timeIndex, dataMode } = params;
-  const cacheKey = `${dataMode}_${activeDatasetId}_${variableId}_${depth}_${timeIndex}`;
+  const boundsStr = viewBounds ? `${viewBounds.minLat}_${viewBounds.maxLat}_${viewBounds.minLon}_${viewBounds.maxLon}` : 'default';
+  const cacheKey = `${dataMode}_${activeDatasetId}_${variableId}_${depth}_${timeIndex}_${boundsStr}`;
   if (dataCache.has(cacheKey)) {
     return dataCache.get(cacheKey);
   }
 
   try {
     const isoTime = new Date(Date.now() + params.timeIndex * 86400000).toISOString();
-    const response = await datasetService.getOceanField(activeDatasetId, params.variableId, params.depth, isoTime);
+    const response = await datasetService.getOceanField(activeDatasetId, params.variableId, params.depth, isoTime, viewBounds);
     
     if (response && response.values) {
       dataCache.set(cacheKey, response.values);

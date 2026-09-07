@@ -2,9 +2,20 @@ import { create } from 'zustand';
 import { datasetService } from '../services/api';
 import { getGridData } from '../data/engine';
 
+export interface ViewBounds {
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+  latRes: number;
+  lonRes: number;
+}
+
 interface OceanState {
   selectedRegion: string;
   setSelectedRegion: (region: string) => void;
+  viewBounds: ViewBounds;
+  setViewBounds: (bounds: ViewBounds) => void;
   selectedVariable: string;
   setSelectedVariable: (variable: string) => void;
   selectedDepth: number;
@@ -45,6 +56,9 @@ export const useOceanStore = create<OceanState>((set, get) => ({
   selectedRegion: 'indian_ocean',
   setSelectedRegion: (region) => set({ selectedRegion: region }),
   
+  viewBounds: { minLat: -30, maxLat: 30, minLon: 40, maxLon: 110, latRes: 2, lonRes: 2 },
+  setViewBounds: (bounds) => set({ viewBounds: bounds }),
+  
   selectedVariable: 'temperature',
   setSelectedVariable: (variable) => set({ selectedVariable: variable }),
   
@@ -82,7 +96,7 @@ export const useOceanStore = create<OceanState>((set, get) => ({
   fieldData: null,
   isLoadingField: false,
   fetchFieldData: async () => {
-    const { activeDatasetId, selectedVariable, selectedDepth, selectedTime, dataMode } = get();
+    const { activeDatasetId, selectedVariable, selectedDepth, selectedTime, dataMode, viewBounds } = get();
     if (dataMode === 'demo' || !activeDatasetId) {
       try {
         set({ isLoadingField: true });
@@ -103,7 +117,13 @@ export const useOceanStore = create<OceanState>((set, get) => ({
     try {
       set({ isLoadingField: true });
       const timeIso = new Date(Date.now() + selectedTime * 3600000).toISOString();
-      const res = await datasetService.getOceanField(activeDatasetId, selectedVariable, selectedDepth, timeIso);
+      const res = await datasetService.getOceanField(
+        activeDatasetId, 
+        selectedVariable, 
+        selectedDepth, 
+        timeIso,
+        viewBounds
+      );
       set({ fieldData: res.values, isLoadingField: false });
     } catch (err) {
       console.error("Failed to fetch field data", err);

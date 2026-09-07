@@ -75,3 +75,44 @@ export const getCrossSection = (req: Request, res: Response) => {
 
   res.json({ distances, depths, values });
 };
+
+export const getProfile = (req: Request, res: Response) => {
+  const schema = z.object({
+    variable: z.string().optional(),
+    time: z.string().optional(),
+    datasetId: z.string().optional()
+  });
+  
+  const parsed = schema.safeParse(req.query);
+  const variable = parsed.success && parsed.data.variable ? parsed.data.variable : 'temperature';
+  const time = parsed.success && parsed.data.time ? parsed.data.time : new Date().toISOString();
+
+  // Use time to create a "real-time" fluctuation effect
+  const timeIndex = new Date(time).getTime() / 100000 || 0;
+  const fluctuation = Math.sin(timeIndex) * 0.5;
+
+  const depths = [0, 10, 50, 100, 200, 500, 1000, 2000, 3000, 4000, 5000];
+  const values = depths.map(d => {
+    // Apply a baseline exponential decay towards deep ocean values, plus a time-based fluctuation that affects all depths
+    if (variable === 'temperature') {
+      const baseTemp = 2 + 26 * Math.exp(-d / 800);
+      const tempFluctuation = fluctuation * (Math.exp(-d / 1000) + 0.2); // Fluctuate even at deep levels
+      return Math.max(0, baseTemp + tempFluctuation);
+    }
+    if (variable === 'salinity') {
+      const baseSal = 34 + (1.5 * Math.exp(-d / 1000));
+      return baseSal + (fluctuation * 0.2);
+    }
+    if (variable === 'current' || variable === 'currentVelocity') {
+      const baseVel = 1.5 * Math.exp(-d / 400);
+      return Math.max(0, baseVel + (fluctuation * 0.3 * (Math.exp(-d / 500) + 0.1)));
+    }
+    if (variable === 'chlorophyll') {
+      const baseChl = 2.0 * Math.exp(-d / 100);
+      return Math.max(0, baseChl + (fluctuation * 0.5 * (Math.exp(-d / 150) + 0.05)));
+    }
+    return 0;
+  });
+
+  res.json({ depths, values, variable, time });
+};

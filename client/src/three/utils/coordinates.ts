@@ -13,13 +13,21 @@ const SCENE_DEPTH = 30; // Z axis
 const MAX_DEPTH = REGIONS.INDIAN_OCEAN.maxDepth;
 const BASE_Y_SCALE = -10 / MAX_DEPTH;
 
-export const geoToWorld = (lat: number, lon: number): [number, number] => {
-  // Center of the region is (0, 0) in world space
-  const midLon = (REGIONS.INDIAN_OCEAN.maxLon + REGIONS.INDIAN_OCEAN.minLon) / 2;
-  const midLat = (REGIONS.INDIAN_OCEAN.maxLat + REGIONS.INDIAN_OCEAN.minLat) / 2;
+export const geoToWorld = (lat: number, lon: number, bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number }): [number, number] => {
+  const b = bounds || { 
+    minLat: REGIONS.INDIAN_OCEAN.minLat, 
+    maxLat: REGIONS.INDIAN_OCEAN.maxLat, 
+    minLon: REGIONS.INDIAN_OCEAN.minLon, 
+    maxLon: REGIONS.INDIAN_OCEAN.maxLon 
+  };
   
-  const x = ((lon - midLon) / LON_RANGE) * SCENE_WIDTH;
-  const z = -((lat - midLat) / LAT_RANGE) * SCENE_DEPTH; // Negative because Z goes up as Lat goes down (standard map projection)
+  const midLon = (b.maxLon + b.minLon) / 2;
+  const midLat = (b.maxLat + b.minLat) / 2;
+  const lonRange = b.maxLon - b.minLon;
+  const latRange = b.maxLat - b.minLat;
+  
+  const x = ((lon - midLon) / lonRange) * SCENE_WIDTH;
+  const z = -((lat - midLat) / latRange) * SCENE_DEPTH; 
   
   return [x, z];
 };
@@ -28,12 +36,21 @@ export const depthToWorld = (depth: number, verticalExaggeration: number = 1): n
   return depth * BASE_Y_SCALE * verticalExaggeration;
 };
 
-export const worldToGeo = (x: number, z: number): [number, number] => {
-  const midLon = (REGIONS.INDIAN_OCEAN.maxLon + REGIONS.INDIAN_OCEAN.minLon) / 2;
-  const midLat = (REGIONS.INDIAN_OCEAN.maxLat + REGIONS.INDIAN_OCEAN.minLat) / 2;
+export const worldToGeo = (x: number, z: number, bounds?: { minLat: number; maxLat: number; minLon: number; maxLon: number }): [number, number] => {
+  const b = bounds || { 
+    minLat: REGIONS.INDIAN_OCEAN.minLat, 
+    maxLat: REGIONS.INDIAN_OCEAN.maxLat, 
+    minLon: REGIONS.INDIAN_OCEAN.minLon, 
+    maxLon: REGIONS.INDIAN_OCEAN.maxLon 
+  };
 
-  const lon = (x / SCENE_WIDTH) * LON_RANGE + midLon;
-  const lat = -(z / SCENE_DEPTH) * LAT_RANGE + midLat;
+  const midLon = (b.maxLon + b.minLon) / 2;
+  const midLat = (b.maxLat + b.minLat) / 2;
+  const lonRange = b.maxLon - b.minLon;
+  const latRange = b.maxLat - b.minLat;
+
+  const lon = (x / SCENE_WIDTH) * lonRange + midLon;
+  const lat = -(z / SCENE_DEPTH) * latRange + midLat;
 
   return [lat, lon];
 };

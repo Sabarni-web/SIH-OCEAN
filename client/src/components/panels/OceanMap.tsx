@@ -14,7 +14,7 @@ export const OceanMap: React.FC = () => {
   const [mapMode, setMapMode] = useState<'dark' | 'satellite'>('dark');
 
   const { observations, selectedObservationId, selectObservation } = useObservationStore();
-  const { setVisualizationMode } = useOceanStore();
+  const { setVisualizationMode, viewBounds } = useOceanStore();
   const { replayMode, currentFrameIndex, totalFrames, instrumentSnapshots } = useReplayStore();
 
   // Initialize Map Once
@@ -42,6 +42,17 @@ export const OceanMap: React.FC = () => {
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Update map bounds when ocean selection changes
+  useEffect(() => {
+    if (mapInstanceRef.current && viewBounds) {
+      const bounds: L.LatLngBoundsExpression = [
+        [viewBounds.minLat, viewBounds.minLon],
+        [viewBounds.maxLat, viewBounds.maxLon]
+      ];
+      mapInstanceRef.current.fitBounds(bounds, { animate: true, duration: 1.5, padding: [10, 10] });
+    }
+  }, [viewBounds]);
 
   // Switch Basemap Tiles (Dark vs Satellite)
   useEffect(() => {
