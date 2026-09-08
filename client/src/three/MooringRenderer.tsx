@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cylinder, Html } from '@react-three/drei';
 import { useObservationStore } from '../store/useObservationStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { geoToWorld, depthToWorld } from './utils/coordinates';
 import type { Mooring } from '../../../shared/types';
 
@@ -10,11 +11,12 @@ interface Props {
 
 export const MooringRenderer: React.FC<Props> = ({ data }) => {
   const { selectedObservationId, selectObservation } = useObservationStore();
+  const { viewBounds } = useOceanStore();
 
   return (
     <group>
       {data.map((mooring) => {
-        const [x, z] = geoToWorld(mooring.latitude, mooring.longitude);
+        const [x, z] = geoToWorld(mooring.latitude, mooring.longitude, viewBounds);
         const y = depthToWorld(0); // Surface marker
         const maxDepthY = depthToWorld(mooring.sensorDepths[mooring.sensorDepths.length - 1] || 1000);
         const isSelected = selectedObservationId === mooring.id;

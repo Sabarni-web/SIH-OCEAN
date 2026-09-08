@@ -12,7 +12,7 @@ interface Props {
 
 export const GliderRenderer: React.FC<Props> = ({ data }) => {
   const { selectedObservationId, selectObservation } = useObservationStore();
-  const { selectedTime } = useOceanStore();
+  const { selectedTime, viewBounds } = useOceanStore();
 
   return (
     <group>
@@ -22,7 +22,7 @@ export const GliderRenderer: React.FC<Props> = ({ data }) => {
         // Current point follows selectedTime modulo track length
         const timeIndex = selectedTime % glider.track.length;
         const currentPt = glider.track[timeIndex] || glider.track[glider.track.length - 1];
-        const [cx, cz] = geoToWorld(currentPt.latitude, currentPt.longitude);
+        const [cx, cz] = geoToWorld(currentPt.latitude, currentPt.longitude, viewBounds);
         const cy = depthToWorld(currentPt.depth);
 
         return (
@@ -34,7 +34,7 @@ export const GliderRenderer: React.FC<Props> = ({ data }) => {
           >
             <Line 
               points={glider.track.map(pt => {
-                const [x, z] = geoToWorld(pt.latitude, pt.longitude);
+                const [x, z] = geoToWorld(pt.latitude, pt.longitude, viewBounds);
                 return new THREE.Vector3(x, depthToWorld(pt.depth), z);
               })} 
               color={isSelected ? "#00ff88" : "#00aa55"} 

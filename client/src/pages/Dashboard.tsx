@@ -11,6 +11,7 @@ import { FeatureGrid } from '../components/FeatureGrid';
 import { DatasetSelector } from '../components/DatasetSelector';
 import { ComparisonPanel } from '../components/panels/ComparisonPanel';
 import { AnalyticsToolbar } from '../components/panels/AnalyticsToolbar';
+import { ErddapTemperatureChart } from '../components/panels/ErddapTemperatureChart';
 
 export const Dashboard: React.FC = () => {
   return (
@@ -46,6 +47,9 @@ export const Dashboard: React.FC = () => {
 
       {/* Variables */}
       <VariableCards />
+
+      {/* ERDDAP Live Temperature Chart */}
+      <ErddapTemperatureChart />
 
       {/* Feature Grid */}
       <FeatureGrid />

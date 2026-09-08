@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icosahedron, Html } from '@react-three/drei';
 import { useObservationStore } from '../store/useObservationStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { geoToWorld, depthToWorld } from './utils/coordinates';
 import type { BGCObservation } from '../../../shared/types';
 
@@ -10,11 +11,12 @@ interface Props {
 
 export const BGCRenderer: React.FC<Props> = ({ data }) => {
   const { selectedObservationId, selectObservation } = useObservationStore();
+  const { viewBounds } = useOceanStore();
 
   return (
     <group>
       {data.map((bgc) => {
-        const [x, z] = geoToWorld(bgc.latitude, bgc.longitude);
+        const [x, z] = geoToWorld(bgc.latitude, bgc.longitude, viewBounds);
         const y = depthToWorld(bgc.depth);
         const isSelected = selectedObservationId === bgc.id;
 

@@ -37,20 +37,79 @@ export const OceanMap: React.FC = () => {
     tileLayerGroupRef.current = L.layerGroup().addTo(map);
     markersGroupRef.current = L.layerGroup().addTo(map);
 
+    map.on('moveend', () => {
+      if ((map as any)._isProgrammaticBoundsUpdate) {
+        // Do not reset it here if it's tied to an animation, the setTimeout will reset it.
+        return;
+      }
+      const bounds = map.getBounds();
+      const currentViewBounds = useOceanStore.getState().viewBounds;
+      
+      const newMinLat = bounds.getSouth();
+      const newMaxLat = bounds.getNorth();
+      let newMinLon = bounds.getWest();
+      let newMaxLon = bounds.getEast();
+
+      // Basic wrap for longitude
+      if (newMinLon < -180) newMinLon += 360;
+      if (newMaxLon > 180) newMaxLon -= 360;
+
+      // Check if it's a significant change to avoid infinite loops
+      const latDiff = Math.abs(currentViewBounds.minLat - newMinLat);
+      const lonDiff = Math.abs(currentViewBounds.minLon - newMinLon);
+
+      if (latDiff > 0.5 || lonDiff > 0.5) {
+        useOceanStore.getState().setSelectedRegion('custom');
+        useOceanStore.getState().setViewBounds({
+          ...currentViewBounds,
+          minLat: newMinLat,
+          maxLat: newMaxLat,
+          minLon: newMinLon,
+          maxLon: newMaxLon
+        });
+        useOceanStore.getState().fetchFieldData();
+      }
+    });
+
+    // We need to attach isProgrammatic to the ref or something to share it with the other useEffect.
+    // A cleaner way is to store it on the map object itself.
+    (map as any)._isProgrammaticBoundsUpdate = false;
+
+    map.on('zoomend', () => {
+        // Trigger same logic on zoom
+        map.fire('moveend');
+    });
+
     return () => {
       map.remove();
       mapInstanceRef.current = null;
     };
   }, []);
 
-  // Update map bounds when ocean selection changes
+  // Update map bounds when ocean selection changes (from external components)
   useEffect(() => {
     if (mapInstanceRef.current && viewBounds) {
-      const bounds: L.LatLngBoundsExpression = [
-        [viewBounds.minLat, viewBounds.minLon],
-        [viewBounds.maxLat, viewBounds.maxLon]
-      ];
-      mapInstanceRef.current.fitBounds(bounds, { animate: true, duration: 1.5, padding: [10, 10] });
+      const map = mapInstanceRef.current;
+      const currentMapBounds = map.getBounds();
+      
+      const latDiff = Math.abs(currentMapBounds.getSouth() - viewBounds.minLat);
+      const lonDiff = Math.abs(currentMapBounds.getWest() - viewBounds.minLon);
+      
+      if (latDiff > 0.5 || lonDiff > 0.5) {
+        (map as any)._isProgrammaticBoundsUpdate = true;
+        const bounds: L.LatLngBoundsExpression = [
+          [viewBounds.minLat, viewBounds.minLon],
+          [viewBounds.maxLat, viewBounds.maxLon]
+        ];
+        map.fitBounds(bounds, { animate: true, duration: 1.5, padding: [10, 10] });
+        
+        // Reset the flag after animation completes
+        setTimeout(() => {
+           if (mapInstanceRef.current) {
+             (mapInstanceRef.current as any)._isProgrammaticBoundsUpdate = false;
+           }
+        }, 1600);
+      }
     }
   }, [viewBounds]);
 

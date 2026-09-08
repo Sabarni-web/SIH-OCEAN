@@ -239,15 +239,17 @@ const OceanDataMesh = () => {
             
             const realTemp = interpolateSST(activeSST, geoLat, geoLon);
             // Apply vertical depth decay if depth slider is moved
-            val = Math.max(1.5, realTemp - (selectedDepth / 1600) * (realTemp - 1.5));
+            val = Math.max(-2.0, realTemp - (selectedDepth / 1600) * (realTemp + 2.0));
           } else {
-            // Baseline Indian Ocean Warm Pool thermal model for live view
-            const tropicalWarmth = Math.sin(latNorm * Math.PI * 0.85) * 20 + 9;
-            const warmPoolCore = (lonNorm > 0.45 && latNorm > 0.35) ? 2.5 : 0;
+            // Global thermal model based on actual latitude
+            const b = useOceanStore.getState().viewBounds;
+            const actualLat = b.minLat + latNorm * (b.maxLat - b.minLat);
+            
+            const baseTemp = 30 - (Math.abs(actualLat) / 90) * 32; // 30C at equator, -2C at poles
             const thermalRipples = Math.sin(x * 0.3 + t * 0.7) * Math.cos(y * 0.25 + t * 0.5) * 1.6;
 
-            const surfaceTemp = tropicalWarmth + warmPoolCore + thermalRipples;
-            val = Math.max(1.5, surfaceTemp - (selectedDepth / 1600) * (surfaceTemp - 1.5));
+            const surfaceTemp = baseTemp + thermalRipples;
+            val = Math.max(-2.0, surfaceTemp - (selectedDepth / 1600) * (surfaceTemp + 2.0));
           }
         } else if (selectedVariable === 'salinity') {
           // Arabian Sea (high salinity 36.5) vs Bay of Bengal (monsoon river runoff 32.5)

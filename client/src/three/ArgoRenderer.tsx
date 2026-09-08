@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sphere, Cylinder, Html } from '@react-three/drei';
 import { useObservationStore } from '../store/useObservationStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { geoToWorld, depthToWorld } from './utils/coordinates';
 import type { ArgoFloat } from '../../../shared/types';
 
@@ -10,11 +11,12 @@ interface Props {
 
 export const ArgoRenderer: React.FC<Props> = ({ data }) => {
   const { selectedObservationId, selectObservation } = useObservationStore();
+  const { viewBounds } = useOceanStore();
 
   return (
     <group>
       {data.map((float) => {
-        const [x, z] = geoToWorld(float.latitude, float.longitude);
+        const [x, z] = geoToWorld(float.latitude, float.longitude, viewBounds);
         const y = depthToWorld(float.depth);
         const isSelected = selectedObservationId === float.id;
 

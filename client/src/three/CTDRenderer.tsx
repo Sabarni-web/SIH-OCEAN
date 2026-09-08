@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Html } from '@react-three/drei';
 import { useObservationStore } from '../store/useObservationStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { geoToWorld, depthToWorld } from './utils/coordinates';
 import type { CTDObservation } from '../../../shared/types';
 
@@ -10,11 +11,12 @@ interface Props {
 
 export const CTDRenderer: React.FC<Props> = ({ data }) => {
   const { selectedObservationId, selectObservation } = useObservationStore();
+  const { viewBounds } = useOceanStore();
 
   return (
     <group>
       {data.map((ctd) => {
-        const [x, z] = geoToWorld(ctd.latitude, ctd.longitude);
+        const [x, z] = geoToWorld(ctd.latitude, ctd.longitude, viewBounds);
         const y = depthToWorld(ctd.depth);
         const isSelected = selectedObservationId === ctd.id;
 

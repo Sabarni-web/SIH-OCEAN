@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useObservationStore } from '../store/useObservationStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { useReplayStore } from '../store/useReplayStore';
 import { ArgoRenderer } from './ArgoRenderer';
 import { GliderRenderer } from './GliderRenderer';
@@ -70,12 +71,13 @@ export const ObservationSystem: React.FC = () => {
 
     // 2. Argo Trajectory Trails: Connect coordinates across historical snapshots up to currentFrameIndex
     const trailPointsByWmo = new Map<string, THREE.Vector3[]>();
+    const viewBounds = useOceanStore.getState().viewBounds;
     for (let i = 0; i <= currentFrameIndex; i++) {
       const snap = instrumentSnapshots[i];
       if (!snap || !snap.argos) continue;
       snap.argos.forEach(a => {
         if (!trailPointsByWmo.has(a.wmoId)) trailPointsByWmo.set(a.wmoId, []);
-        const [tx, tz] = geoToWorld(a.latitude, a.longitude);
+        const [tx, tz] = geoToWorld(a.latitude, a.longitude, viewBounds);
         trailPointsByWmo.get(a.wmoId)!.push(new THREE.Vector3(tx, 0.4, tz));
       });
     }
