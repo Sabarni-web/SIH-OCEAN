@@ -55,14 +55,8 @@ interface OceanState {
 export const useOceanStore = create<OceanState>((set, get) => ({
   selectedRegion: 'indian_ocean',
   setSelectedRegion: (region) => set({ selectedRegion: region }),
-<<<<<<< HEAD
-
-=======
-  
   viewBounds: { minLat: -30, maxLat: 30, minLon: 40, maxLon: 110, latRes: 2, lonRes: 2 },
   setViewBounds: (bounds) => set({ viewBounds: bounds }),
-  
->>>>>>> 904658d4250f0cd7ed362731c747bcccf2ba4c9c
   selectedVariable: 'temperature',
   setSelectedVariable: (variable) => set({ selectedVariable: variable }),
 

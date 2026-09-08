@@ -178,80 +178,6 @@ export const getOceanField = async (req: Request, res: Response) => {
     }
     if (!ds) ds = DEFAULT_INCOIS_DATASET;
 
-<<<<<<< HEAD
-    // Use specific NOAA ERDDAP dataset for chlorophyll detailed visualization
-    if (parsed.data.variable === 'chlorophyll') {
-      try {
-        const timeStr = new Date(parsed.data.time).toISOString().split('T')[0] + 'T12:00:00Z';
-        // Stride lat/lon by 20 to avoid massive payloads (0.04 * 20 = 0.8 degrees resolution)
-        const url = `https://coastwatch.pfeg.noaa.gov/erddap/griddap/nesdisNPPN20S3ASCIDINEOFDaily.json?chlor_a[(${timeStr}):1:(${timeStr})][(0):1:(0.0)][(30):20:(-30)][(40):20:(110)]`;
-        
-        const response = await fetch(url, {
-          headers: { 'User-Agent': 'OCEAN-VISTA/1.0' }
-        });
-        
-        if (response.ok) {
-          const erddapData = await response.json();
-          // rows format: [time, altitude, latitude, longitude, chlor_a]
-          const values = erddapData.table.rows.map((row: any) => ({
-            lat: row[2],
-            lon: row[3],
-            depth: 0,
-            value: row[4] !== null ? row[4] : 0
-          }));
-          
-          return res.json({
-            datasetId: req.params.id,
-            variable: parsed.data.variable,
-            depth: parsed.data.depth,
-            time: parsed.data.time,
-            coordinates: { latitude: [], longitude: [] },
-            values: values
-          });
-        } else {
-          console.error(`ERDDAP fetch failed with status: ${response.status}`);
-        }
-      } catch (err: any) {
-        console.error("ERDDAP fetch error:", err.message);
-      }
-    }
-
-    // Simulate reading a spatial subset from the file
-    const latResolution = 2;
-    const lonResolution = 2;
-    const lats = Array.from({ length: 30 }, (_, i) => -30 + i * latResolution);
-    const lons = Array.from({ length: 35 }, (_, i) => 40 + i * lonResolution);
-
-    const values = [];
-    const timeIndex = new Date(parsed.data.time).getTime() / 100000 || 0;
-
-    for (let lat of lats) {
-      for (let lon of lons) {
-        const d = parsed.data.depth;
-        const t = timeIndex;
-        const n = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 + d * 0.05) + Math.sin(lon * 0.2 - t) * Math.cos(lat * 0.15);
-
-        let val = 0;
-        if (parsed.data.variable === 'temperature') {
-          val = (30 - (d / 2000) * 30) + n * 2;
-        } else if (parsed.data.variable === 'salinity') {
-          val = 35 + n * 1.5 - d / 4000;
-        } else if (parsed.data.variable === 'chlorophyll') {
-          val = Math.max(0, (1 + n * 2) * (d > 200 ? 0 : 1 - d / 200));
-        } else if (parsed.data.variable === 'currentVelocity') {
-          const u = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 - d * 0.001);
-          const v = Math.cos(lat * 0.1 - t) * Math.sin(lon * 0.1 + d * 0.001);
-          val = Math.sqrt(u * u + v * v);
-        } else if (parsed.data.variable === 'currentDirection') {
-          const u = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 - d * 0.001);
-          const v = Math.cos(lat * 0.1 - t) * Math.sin(lon * 0.1 + d * 0.001);
-          let dir = Math.atan2(v, u) * (180 / Math.PI);
-          if (dir < 0) dir += 360;
-          val = dir;
-        } else {
-          val = 10 + n * 5;
-        }
-=======
     // Use requested bounds or defaults
     const latResolution = parsed.data.latRes;
     const lonResolution = parsed.data.lonRes;
@@ -263,9 +189,32 @@ export const getOceanField = async (req: Request, res: Response) => {
     
     // Attempt to fetch real-world data from our external API proxy
     let values = await fetchRealOceanData(lats, lons, parsed.data.variable, parsed.data.depth, parsed.data.time);
->>>>>>> 904658d4250f0cd7ed362731c747bcccf2ba4c9c
 
-    // If the API doesn't support this variable (or fails), fallback to our mathematical simulation
+    // If the API doesn't support this variable (or fails), try specific manual ERDDAP override for chlorophyll
+    if (!values && parsed.data.variable === 'chlorophyll') {
+      try {
+        const timeStr = new Date(parsed.data.time).toISOString().split('T')[0] + 'T12:00:00Z';
+        const url = `https://coastwatch.pfeg.noaa.gov/erddap/griddap/nesdisNPPN20S3ASCIDINEOFDaily.json?chlor_a[(${timeStr}):1:(${timeStr})][(0):1:(0.0)][(${parsed.data.maxLat}):20:(${parsed.data.minLat})][(${parsed.data.minLon}):20:(${parsed.data.maxLon})]`;
+        
+        const response = await fetch(url, {
+          headers: { 'User-Agent': 'OCEAN-VISTA/1.0' }
+        });
+        
+        if (response.ok) {
+          const erddapData = await response.json();
+          values = erddapData.table.rows.map((row: any) => ({
+            lat: row[2],
+            lon: row[3],
+            depth: 0,
+            value: row[4] !== null ? row[4] : 0
+          }));
+        }
+      } catch (err: any) {
+        console.error("ERDDAP fallback fetch error:", err.message);
+      }
+    }
+
+    // If the API (and fallback) doesn't support this variable (or fails), fallback to our mathematical simulation
     if (!values) {
       values = [];
       const timeIndex = new Date(parsed.data.time).getTime() / 100000 || 0;
