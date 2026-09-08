@@ -107,32 +107,49 @@ export const ArgoPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20 text-white">
-                {filteredFloats.map((float) => {
-                  const isSelected = selectedFloat?.id === float.id;
-                  return (
-                    <tr 
-                      key={float.id}
-                      onClick={() => handleSelectFloat(float)}
-                      className={`cursor-pointer transition-colors ${isSelected ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-white/5'}`}
-                    >
-                      <td className="p-3 font-bold text-primary">{float.wmoId}</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-[10px] font-bold">
-                          ACTIVE
-                        </span>
-                      </td>
-                      <td className="p-3">{float.latitude.toFixed(2)}°N</td>
-                      <td className="p-3">{float.longitude.toFixed(2)}°E</td>
-                      <td className="p-3 text-cyan-300 font-bold">{float.variables.temperature?.toFixed(1) || '--'}</td>
-                      <td className="p-3 text-emerald-300 font-bold">{float.variables.salinity?.toFixed(1) || '--'}</td>
-                      <td className="p-3">
-                        <button className="text-primary hover:underline font-sans text-xs">
-                          Cast Graph →
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {loading && filteredFloats.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-10 text-center text-textSecondary">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                        <p>Connecting to INCOIS ERDDAP... fetching live float telemetry.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredFloats.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-10 text-center text-textSecondary">
+                      No active Argo floats found in this region.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredFloats.map((float) => {
+                    const isSelected = selectedFloat?.id === float.id;
+                    return (
+                      <tr 
+                        key={float.id}
+                        onClick={() => handleSelectFloat(float)}
+                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-white/5'}`}
+                      >
+                        <td className="p-3 font-bold text-primary">{float.wmoId}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-[10px] font-bold">
+                            ACTIVE
+                          </span>
+                        </td>
+                        <td className="p-3">{float.latitude.toFixed(2)}°N</td>
+                        <td className="p-3">{float.longitude.toFixed(2)}°E</td>
+                        <td className="p-3 text-cyan-300 font-bold">{float.variables.temperature?.toFixed(1) || '--'}</td>
+                        <td className="p-3 text-emerald-300 font-bold">{float.variables.salinity?.toFixed(1) || '--'}</td>
+                        <td className="p-3">
+                          <button className="text-primary hover:underline font-sans text-xs">
+                            Cast Graph →
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

@@ -39,6 +39,14 @@ export const ComparePage: React.FC = () => {
     }
   }, [datasets, activeDatasetId, setActiveDatasetId]);
 
+  // Auto-select the first observation to prevent empty view
+  useEffect(() => {
+    if (!selectedObservationId && observations.length > 0) {
+      const firstObs = observations[0];
+      setSelectedObservationId(firstObs.wmoId || firstObs.id);
+    }
+  }, [observations, selectedObservationId, setSelectedObservationId]);
+
   return (
     <div className="max-w-[1600px] mx-auto w-full h-full animate-in fade-in duration-500 flex flex-col">
       <h1 className="text-3xl font-bold text-cyan-400 mb-6">Model vs Observation</h1>

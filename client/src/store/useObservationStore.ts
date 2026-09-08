@@ -79,6 +79,10 @@ export const useObservationStore = create<ObservationState>((set, get) => ({
       const res = await observationService.getObservations(params);
       if (res && res.data) {
         set({ observations: res.data });
+        // Automatically select the first instrument if none is selected
+        if (res.data.length > 0 && !get().selectedObservationId) {
+          get().selectObservation(res.data[0].id);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch observations:", err);
