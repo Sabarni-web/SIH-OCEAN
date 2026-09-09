@@ -1,5 +1,6 @@
 import axios from 'axios';
-
+import { getCache, setCache } from './redis';
+import { interpolateIDW, Point } from '../utils/interpolation';
 export const fetchRealOceanData = async (lats: number[], lons: number[], variable: string, depth: number, timeStr: string) => {
   // NOAA ERDDAP Integration for Global 3D Ocean Data
   
@@ -12,7 +13,7 @@ export const fetchRealOceanData = async (lats: number[], lons: number[], variabl
   };
 
   const mapping = variableMap[variable];
-  if (!mapping) {
+  if (!mapping && variable !== 'salinity') {
     return null; // Fallback to simulation for unsupported variables
   }
 
@@ -34,7 +35,74 @@ export const fetchRealOceanData = async (lats: number[], lons: number[], variabl
   // Format time to ERDDAP ISO
   const time = new Date(timeStr || Date.now()).toISOString().split('.')[0] + 'Z'; 
   
+  // Create a unique cache key for this request
+  const cacheKey = `ocean_data:${variable}:${minLat}:${maxLat}:${minLon}:${maxLon}:${depth}`;
+  
   try {
+    // Check Redis cache first
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      console.log(`[CACHE HIT] Returning cached data for ${variable}`);
+      return cachedData;
+    }
+    
+    console.log(`[CACHE MISS] Fetching fresh data from NOAA for ${variable}`);
+    
+    const headers: Record<string, string> = {};
+    if (process.env.NOAA_ERDDAP_API_KEY) {
+      // Some protected ERDDAP instances or proxies require authentication
+      headers['Authorization'] = `Bearer ${process.env.NOAA_ERDDAP_API_KEY}`;
+    }
+
+    if (variable === 'salinity') {
+      // Use timeStr to construct the time window.
+      // E.g., fetch data up to the requested time, going back 7 days to ensure we find valid points.
+      const requestedDate = timeStr ? new Date(timeStr).getTime() : Date.now();
+      const timeFrom = new Date(requestedDate - 7 * 24 * 60 * 60 * 1000).toISOString().split('.')[0] + 'Z';
+      const timeTo = new Date(requestedDate).toISOString().split('.')[0] + 'Z';
+      
+      const url = `https://coastwatch.pfeg.noaa.gov/erddap/tabledap/nosSosSalinity.json?longitude,latitude,station_id,altitude,time,sensor_id,sea_water_salinity&longitude>=${minLon}&longitude<=${maxLon}&latitude>=${minLat}&latitude<=${maxLat}&time>=${timeFrom}&time<=${timeTo}`;
+      
+      const response = await axios.get(url, { 
+        timeout: 5000,
+        headers 
+      });
+      
+      if (response.data && response.data.table && response.data.table.rows) {
+        const rows = response.data.table.rows;
+        const values = [];
+        for (const row of rows) {
+          // row format: [longitude, latitude, station_id, altitude, time, sensor_id, sea_water_salinity]
+          const valLon = row[0];
+          const valLat = row[1];
+          const val = row[6];
+          
+          if (val !== null && !isNaN(val)) {
+             values.push({
+               lat: valLat,
+               lon: valLon,
+               depth: depth,
+               value: val
+             });
+          }
+        }
+        
+        if (values.length > 0) {
+          // Interpolate the raw sensor points into a smooth grid matching the requested coordinates
+          const interpolatedValues = interpolateIDW(values, lats, lons, depth);
+          
+          // Save to cache for 1 hour
+          await setCache(cacheKey, interpolatedValues, 3600);
+          return interpolatedValues;
+        }
+      }
+      return null;
+    }
+
+    if (!mapping) {
+      return null;
+    }
+
     // Construct URL (simplistic version for the prototype)
     // Example: hycom_glbu_08pt24_latest.json?salinity[(2023-01-01T00:00:00Z)][(0.0)][(-30):(30)][(40):(110)]
     const query = `${mapping.datasetId}.json?${mapping.varName}[(last)][(${depth})][(${minLat}):1:(${maxLat})][(${minLon}):1:(${maxLon})]`;
@@ -42,11 +110,6 @@ export const fetchRealOceanData = async (lats: number[], lons: number[], variabl
     
     // We wrap in a try-catch with a 3-second timeout. 
     // ERDDAP servers are notoriously slow for large 3D subsets.
-    const headers: Record<string, string> = {};
-    if (process.env.NOAA_ERDDAP_API_KEY) {
-      // Some protected ERDDAP instances or proxies require authentication
-      headers['Authorization'] = `Bearer ${process.env.NOAA_ERDDAP_API_KEY}`;
-    }
     
     const response = await axios.get(url, { 
       timeout: 3000,
@@ -78,7 +141,11 @@ export const fetchRealOceanData = async (lats: number[], lons: number[], variabl
       }
       
       // If we got valid data, return it
-      if (values.length > 0) return values;
+      if (values.length > 0) {
+        // Save to cache for 1 hour
+        await setCache(cacheKey, values, 3600);
+        return values;
+      }
     }
     
     return null;
