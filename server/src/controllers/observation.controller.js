@@ -5,7 +5,7 @@ const Observation_1 = require("../models/Observation");
 const incois_service_1 = require("../services/incois.service");
 const getObservations = async (req, res) => {
     try {
-        const { type, limit = '1200', page = '1', startDate, endDate } = req.query;
+        const { type, limit = '1200', page = '1', startDate, endDate, minLat, maxLat, minLon, maxLon } = req.query;
         const query = {};
         if (type)
             query.type = type;
@@ -22,7 +22,10 @@ const getObservations = async (req, res) => {
         }
         // If no observations in MongoDB, fetch real live in-situ observations from INCOIS
         if (observations.length === 0) {
-            let liveObs = await (0, incois_service_1.fetchAllIncoisObservations)(startDate ? String(startDate) : undefined, endDate ? String(endDate) : undefined);
+            const bounds = (minLat && maxLat && minLon && maxLon) ? {
+                minLat: Number(minLat), maxLat: Number(maxLat), minLon: Number(minLon), maxLon: Number(maxLon)
+            } : undefined;
+            let liveObs = await (0, incois_service_1.fetchAllIncoisObservations)(startDate ? String(startDate) : undefined, endDate ? String(endDate) : undefined, bounds, type ? String(type) : undefined);
             if (type) {
                 liveObs = liveObs.filter(o => o.type === type);
             }

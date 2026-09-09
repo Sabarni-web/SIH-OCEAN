@@ -17,28 +17,21 @@ export const ErddapTemperatureChart: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // The URL with JSON format requested
-        const url = 'https://coastwatch.pfeg.noaa.gov/erddap/tabledap/nosSosWTemp.json?longitude%2Clatitude%2Cstation_id%2Caltitude%2Ctime%2Csensor_id%2Csea_water_temperature%2Cquality_flags&longitude%3E=167.7361&longitude%3C=167.7361&latitude%3E=70.4114&time%3E=2026-09-01T00%3A00%3A00Z';
+        // Call our backend API instead of NOAA directly
+        const url = 'http://localhost:5000/api/datasets/incois_hoofs_indian_ocean/field?variable=temperature&depth=0&time=2026-09-01T00:00:00Z';
         
         const response = await axios.get(url);
         
-        if (response.data && response.data.table && response.data.table.rows) {
-          const rows = response.data.table.rows;
-          const colNames = response.data.table.columnNames as string[];
+        if (response.data && response.data.values) {
+          const values = response.data.values.slice(0, 50); // limit points for chart
+          const formattedData: DataPoint[] = values.map((val: any, index: number) => ({
+            time: `Point ${index + 1}`,
+            temperature: Number(val.value.toFixed(2))
+          })).filter((d: DataPoint) => !isNaN(d.temperature));
           
-          const timeIdx = colNames.indexOf('time');
-          const tempIdx = colNames.indexOf('sea_water_temperature');
-
-          if (timeIdx !== -1 && tempIdx !== -1) {
-            const formattedData: DataPoint[] = rows.map((row: any[]) => ({
-              time: new Date(row[timeIdx]).toLocaleDateString() + ' ' + new Date(row[timeIdx]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-              temperature: Number(row[tempIdx])
-            })).filter((d: DataPoint) => !isNaN(d.temperature));
-            
-            setData(formattedData);
-          } else {
-            setError("Unexpected data format: Missing time or temperature columns.");
-          }
+          setData(formattedData);
+        } else {
+          setError("Unexpected data format from backend API.");
         }
       } catch (err: any) {
         console.error("Failed to fetch ERDDAP data:", err);

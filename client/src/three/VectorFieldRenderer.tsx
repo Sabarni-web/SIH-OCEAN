@@ -81,11 +81,11 @@ const AnimatedArrow: React.FC<{
 };
 
 export const VectorFieldRenderer: React.FC = () => {
-  const { verticalExaggeration, currentVectors, fetchCurrentVectors } = useAnalyticsStore();
+  const { verticalExaggeration, currentVectors, fetchCurrentVectors, vectorEnabled } = useAnalyticsStore();
   const { layers } = useOceanStore();
   const { replayMode, replayFrames, currentFrameIndex } = useReplayStore();
 
-  const showVectors = layers.currents;
+  const showVectors = layers.currents || vectorEnabled;
 
   useEffect(() => {
     if (showVectors && currentVectors.length === 0) {
@@ -109,9 +109,10 @@ export const VectorFieldRenderer: React.FC = () => {
       ? (replayFrames[currentFrameIndex]?.vectors || [])
       : currentVectors;
 
+    const b = useOceanStore.getState().viewBounds;
     if (activeVectors && activeVectors.length > 0) {
       return activeVectors.map((vec) => {
-        const [x, z] = geoToWorld(vec.latitude, vec.longitude);
+        const [x, z] = geoToWorld(vec.latitude, vec.longitude, b);
         const rad = (vec.direction * Math.PI) / 180;
         const u = vec.u ?? (vec.speed * Math.sin(rad));
         const v = vec.v ?? (vec.speed * Math.cos(rad));

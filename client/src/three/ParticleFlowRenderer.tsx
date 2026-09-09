@@ -3,14 +3,21 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useAnalyticsStore } from '../store/useAnalyticsStore';
 import { useReplayStore } from '../store/useReplayStore';
+import { useOceanStore } from '../store/useOceanStore';
 import { SCENE_DIMENSIONS, geoToWorld } from './utils/coordinates';
 
 const PARTICLE_COUNT = 1500;
 
 export const ParticleFlowRenderer: React.FC = () => {
-  const { particleEnabled, verticalExaggeration, currentVectors } = useAnalyticsStore();
+  const { particleEnabled, verticalExaggeration, currentVectors, fetchCurrentVectors } = useAnalyticsStore();
   const { replayMode, replayFrames, currentFrameIndex } = useReplayStore();
   const pointsRef = useRef<THREE.Points>(null);
+
+  React.useEffect(() => {
+    if (particleEnabled && currentVectors.length === 0) {
+      fetchCurrentVectors();
+    }
+  }, [particleEnabled, currentVectors.length, fetchCurrentVectors]);
 
   // Particle state arrays: positions, colors, and particle life ages
   const [positions, colors, ages, maxAges] = useMemo(() => {
@@ -58,16 +65,19 @@ export const ParticleFlowRenderer: React.FC = () => {
       : currentVectors;
 
     if (!activeVectors || activeVectors.length === 0) return null;
+    const b = useOceanStore.getState().viewBounds;
+    
     return activeVectors.map(vec => {
-      const [wx, wz] = geoToWorld(vec.latitude, vec.longitude);
+      const [wx, wz] = geoToWorld(vec.latitude, vec.longitude, b);
       const rad = (vec.direction * Math.PI) / 180;
+      // Use nullish coalescing to safely handle 0 velocities instead of ||
       const u = vec.u ?? (vec.speed * Math.sin(rad));
       const v = vec.v ?? (vec.speed * Math.cos(rad));
       return {
         x: wx,
         z: wz,
-        u: (u || 0.35) * 0.05,
-        v: (v || 0.15) * 0.05
+        u: (u !== null && u !== undefined ? u : 0.35) * 0.05,
+        v: (v !== null && v !== undefined ? v : 0.15) * 0.05
       };
     });
   }, [currentVectors, replayMode, replayFrames, currentFrameIndex]);

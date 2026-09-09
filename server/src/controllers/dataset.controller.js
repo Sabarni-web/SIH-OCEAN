@@ -152,7 +152,13 @@ const getOceanField = async (req, res) => {
         const schema = zod_1.z.object({
             variable: zod_1.z.string(),
             depth: zod_1.z.string().transform(Number),
-            time: zod_1.z.string()
+            time: zod_1.z.string(),
+            minLat: zod_1.z.string().optional().transform(v => v ? Number(v) : -30),
+            maxLat: zod_1.z.string().optional().transform(v => v ? Number(v) : 30),
+            minLon: zod_1.z.string().optional().transform(v => v ? Number(v) : 40),
+            maxLon: zod_1.z.string().optional().transform(v => v ? Number(v) : 110),
+            latRes: zod_1.z.string().optional().transform(v => v ? Number(v) : 2),
+            lonRes: zod_1.z.string().optional().transform(v => v ? Number(v) : 2)
         });
         const parsed = schema.safeParse(req.query);
         if (!parsed.success) {
@@ -172,6 +178,40 @@ const getOceanField = async (req, res) => {
         }
         if (!ds)
             ds = DEFAULT_INCOIS_DATASET;
+        if (parsed.data.variable === 'chlorophyll') {
+            try {
+                const timeStr = new Date(parsed.data.time).toISOString().split('T')[0] + 'T12:00:00Z';
+                // Stride lat/lon by 20 to avoid massive payloads (0.04 * 20 = 0.8 degrees resolution)
+                const url = `https://coastwatch.pfeg.noaa.gov/erddap/griddap/nesdisNPPN20S3ASCIDINEOFDaily.json?chlor_a[(${timeStr}):1:(${timeStr})][(0):1:(0.0)][(30):20:(-30)][(40):20:(110)]`;
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'OCEAN-VISTA/1.0' }
+                });
+                if (response.ok) {
+                    const erddapData = await response.json();
+                    // rows format: [time, altitude, latitude, longitude, chlor_a]
+                    const values = erddapData.table.rows.map((row) => ({
+                        lat: row[2],
+                        lon: row[3],
+                        depth: 0,
+                        value: row[4] !== null ? row[4] : 0
+                    }));
+                    return res.json({
+                        datasetId: req.params.id,
+                        variable: parsed.data.variable,
+                        depth: parsed.data.depth,
+                        time: parsed.data.time,
+                        coordinates: { latitude: [], longitude: [] },
+                        values: values
+                    });
+                }
+                else {
+                    console.error(`ERDDAP fetch failed with status: ${response.status}`);
+                }
+            }
+            catch (err) {
+                console.error("ERDDAP fetch error:", err.message);
+            }
+        }
         // Simulate reading a spatial subset from the file
         const latResolution = 2;
         const lonResolution = 2;
@@ -210,20 +250,61 @@ const getOceanField = async (req, res) => {
                 else {
                     val = 10 + n * 5;
                 }
-                values.push({ lat, lon, depth: d, value: val });
+                if (!values) {
+                    values = [];
+                    const timeIndex = new Date(parsed.data.time).getTime() / 100000 || 0;
+                    for (let lat of lats) {
+                        for (let lon of lons) {
+                            const d = parsed.data.depth;
+                            const t = timeIndex;
+                            const n = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 + d * 0.05) + Math.sin(lon * 0.2 - t) * Math.cos(lat * 0.15);
+                            let val = 0;
+                            if (parsed.data.variable === 'temperature') {
+                                val = (30 - (d / 2000) * 30) + n * 2;
+                            }
+                            else if (parsed.data.variable === 'salinity') {
+                                val = 35 + n * 1.5 - d / 4000;
+                            }
+                            else if (parsed.data.variable === 'chlorophyll') {
+                                val = Math.max(0, (1 + n * 2) * (d > 200 ? 0 : 1 - d / 200));
+                            }
+                            else if (parsed.data.variable === 'currentVelocity') {
+                                const u = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 - d * 0.001);
+                                const v = Math.cos(lat * 0.1 - t) * Math.sin(lon * 0.1 + d * 0.001);
+                                val = Math.sqrt(u * u + v * v);
+                            }
+                            else if (parsed.data.variable === 'currentDirection') {
+                                const u = Math.sin(lat * 0.1 + t) * Math.cos(lon * 0.1 - d * 0.001);
+                                const v = Math.cos(lat * 0.1 - t) * Math.sin(lon * 0.1 + d * 0.001);
+                                let dir = Math.atan2(v, u) * (180 / Math.PI);
+                                if (dir < 0)
+                                    dir += 360;
+                                val = dir;
+                            }
+                            else {
+                                val = 10 + n * 5;
+                            }
+                            values.push({ lat, lon, depth: d, value: val });
+                        }
+                    }
+                }
+                res.json({
+                    datasetId: req.params.id,
+                    variable: parsed.data.variable,
+                    depth: parsed.data.depth,
+                    time: parsed.data.time,
+                    coordinates: { latitude: lats, longitude: lons },
+                    values: values
+                });
+            }
+            try { }
+            catch (err) {
+                res.status(500).json({ error: err.message });
             }
         }
-        res.json({
-            datasetId: req.params.id,
-            variable: parsed.data.variable,
-            depth: parsed.data.depth,
-            time: parsed.data.time,
-            coordinates: { latitude: lats, longitude: lons },
-            values: values
-        });
+        ;
     }
-    catch (err) {
-        res.status(500).json({ error: err.message });
+    finally {
     }
 };
 exports.getOceanField = getOceanField;

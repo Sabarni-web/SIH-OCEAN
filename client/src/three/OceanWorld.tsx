@@ -24,7 +24,7 @@ import type { SSTGridPoint } from '../../../shared/types';
 import { SCENE_DIMENSIONS, geoToWorld, depthToWorld } from './utils/coordinates';
 import { VolumeBounds } from './VolumeBounds';
 
-function interpolateSST(sstGrid: SSTGridPoint[], targetLat: number, targetLon: number): number {
+function interpolateSST(sstGrid: SSTGridPoint[], targetLat: number, targetLon: number): number | null {
   let weightedSum = 0;
   let weightTotal = 0;
   for (let j = 0; j < sstGrid.length; j++) {
@@ -32,12 +32,16 @@ function interpolateSST(sstGrid: SSTGridPoint[], targetLat: number, targetLon: n
     const dLat = node.latitude - targetLat;
     const dLon = node.longitude - targetLon;
     const distSq = dLat * dLat + dLon * dLon;
-    if (distSq < 0.04) return node.temperature;
-    const weight = 1 / distSq;
-    weightedSum += node.temperature * weight;
-    weightTotal += weight;
+    
+    // Only interpolate if within a reasonable radius (~20 degrees)
+    if (distSq < 400) {
+      if (distSq < 0.04) return node.temperature;
+      const weight = 1 / distSq;
+      weightedSum += node.temperature * weight;
+      weightTotal += weight;
+    }
   }
-  return weightTotal > 0 ? weightedSum / weightTotal : 27.5;
+  return weightTotal > 0 ? weightedSum / weightTotal : null;
 }
 
 
@@ -121,8 +125,13 @@ const DepthSliceMesh = () => {
       // Realistic decay with depth
       let val = 28;
       if (selectedVariable === 'temperature') {
-        const surf = 29 - Math.abs(z / sizeDepth) * 6;
-        val = Math.max(2, surf * Math.exp(-selectedDepth / 600));
+        const latNorm = (z + sizeDepth / 2) / sizeDepth;
+        const b = useOceanStore.getState().viewBounds;
+        const minLat = Number(b.minLat);
+        const maxLat = Number(b.maxLat);
+        const actualLat = minLat + latNorm * (maxLat - minLat);
+        const tempBase = 32 - Math.pow(Math.abs(actualLat) / 60, 2) * 32;
+        val = Math.max(-2.0, tempBase - (selectedDepth / 1600) * (tempBase + 2.0));
       } else if (selectedVariable === 'salinity') {
         val = x < 0 ? 36.2 : 33.0;
       } else if (selectedVariable === 'chlorophyll') {
@@ -236,19 +245,27 @@ const OceanDataMesh = () => {
             
             const geoLat = b.minLat + latNorm * latRange;
             const geoLon = b.minLon + lonNorm * lonRange;
-            
             const realTemp = interpolateSST(activeSST, geoLat, geoLon);
-            // Apply vertical depth decay if depth slider is moved
-            val = Math.max(-2.0, realTemp - (selectedDepth / 1600) * (realTemp + 2.0));
-          } else {
-            // Global thermal model based on actual latitude
-            const b = useOceanStore.getState().viewBounds;
-            const actualLat = b.minLat + latNorm * (b.maxLat - b.minLat);
             
-            const baseTemp = 30 - (Math.abs(actualLat) / 90) * 32; // 30C at equator, -2C at poles
+            if (realTemp !== null) {
+              val = Math.max(-2.0, realTemp - (selectedDepth / 1600) * (realTemp + 2.0));
+            } else {
+              const minLat = Number(b.minLat);
+              const maxLat = Number(b.maxLat);
+              const actualLat = minLat + latNorm * (maxLat - minLat);
+              const tempBase = 32 - Math.pow(Math.abs(actualLat) / 60, 2) * 32;
+              const thermalRipples = Math.sin(x * 0.3 + t * 0.7) * Math.cos(y * 0.25 + t * 0.5) * 1.6;
+              const surfaceTemp = tempBase + thermalRipples;
+              val = Math.max(-2.0, surfaceTemp - (selectedDepth / 1600) * (surfaceTemp + 2.0));
+            }
+          } else {
+            const b = useOceanStore.getState().viewBounds;
+            const minLat = Number(b.minLat);
+            const maxLat = Number(b.maxLat);
+            const actualLat = minLat + latNorm * (maxLat - minLat);
+            const tempBase = 32 - Math.pow(Math.abs(actualLat) / 60, 2) * 32;
             const thermalRipples = Math.sin(x * 0.3 + t * 0.7) * Math.cos(y * 0.25 + t * 0.5) * 1.6;
-
-            const surfaceTemp = baseTemp + thermalRipples;
+            const surfaceTemp = tempBase + thermalRipples;
             val = Math.max(-2.0, surfaceTemp - (selectedDepth / 1600) * (surfaceTemp + 2.0));
           }
         } else if (selectedVariable === 'salinity') {

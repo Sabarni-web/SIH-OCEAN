@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { currentsService } from '../services/api';
 import { useAnalyticsStore } from './useAnalyticsStore';
+import { useOceanStore } from './useOceanStore';
 import type { TimelineFrame, TimelineResponse, InstrumentSnapshot } from '../../../shared/types';
 
 interface ReplayState {
@@ -54,7 +55,8 @@ export const useReplayStore = create<ReplayState>((set, get) => ({
     }
 
     try {
-      const res: TimelineResponse = await currentsService.getTimeline(startDate, endDate);
+      const bounds = useOceanStore.getState().viewBounds;
+      const res: TimelineResponse = await currentsService.getTimeline(startDate, endDate, bounds);
       if (res && res.frames && res.frames.length > 0) {
         set({
           replayFrames: res.frames,
@@ -65,6 +67,38 @@ export const useReplayStore = create<ReplayState>((set, get) => ({
           isReplayPlaying: true,
           replayLoading: false
         });
+
+        // Announce the forecast using Web Speech API
+        try {
+          // Calculate max speed for the briefing
+          let maxSpeed = 0;
+          res.frames.forEach(f => {
+            f.vectors.forEach(v => {
+              if (v.speed > maxSpeed) maxSpeed = v.speed;
+            });
+          });
+          const speedStr = maxSpeed.toFixed(1);
+
+          // Get current ocean region
+          const regionKey = useOceanStore.getState().selectedRegion;
+          const regionMap: Record<string, string> = {
+            'global': 'Global Ocean',
+            'indian_ocean': 'Indian Ocean',
+            'pacific_ocean': 'Pacific Ocean',
+            'atlantic_ocean': 'Atlantic Ocean',
+            'southern_ocean': 'Southern Ocean',
+            'arctic_ocean': 'Arctic Ocean'
+          };
+          const regionName = regionMap[regionKey] || 'Indian Ocean';
+
+          window.speechSynthesis.cancel();
+          const msg = new SpeechSynthesisUtterance(`Predicting the next 3 days for the ${regionName}. Ocean currents are expected to reach a maximum velocity of ${speedStr} meters per second. Commencing forecast simulation.`);
+          msg.rate = 1.0;
+          msg.pitch = 1.0;
+          window.speechSynthesis.speak(msg);
+        } catch (e) {
+          console.warn("Text-to-speech failed:", e);
+        }
       } else {
         console.warn('No temporal replay frames returned from service');
         set({ replayLoading: false, replayMode: false });

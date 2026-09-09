@@ -43,10 +43,13 @@ export const DataProbeRenderer: React.FC = () => {
         setProbePos([hit.x, 0.45, hit.z]);
         const [lat, lon] = worldToGeo(hit.x, hit.z);
 
-        // Scientific physical computation for probed coordinate
-        const latNorm = (hit.z + halfD) / SCENE_DIMENSIONS.depth;
-        const tempBase = Math.sin(latNorm * Math.PI * 0.85) * 20 + 9;
-        const tempVal = Math.max(2, tempBase - (selectedDepth / 1600) * (tempBase - 1.5));
+        const latNorm = (-hit.z + halfD) / SCENE_DIMENSIONS.depth;
+        const b = useOceanStore.getState().viewBounds;
+        const minLat = Number(b.minLat);
+        const maxLat = Number(b.maxLat);
+        const actualLat = minLat + latNorm * (maxLat - minLat);
+        const tempBase = 32 - Math.pow(Math.abs(actualLat) / 60, 2) * 32;
+        const tempVal = Math.max(-2.0, tempBase - (selectedDepth / 1600) * (tempBase + 2.0));
         const salVal = hit.x < 0 ? 36.5 : 32.8;
         const currVal = 0.35 + Math.abs(Math.sin(hit.x * 0.3 + hit.z * 0.3 + selectedTime * 0.2)) * 0.85;
 
