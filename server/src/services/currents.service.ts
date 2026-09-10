@@ -74,7 +74,7 @@ export const fetchLiveOceanCurrents = async (dateStr?: string): Promise<CurrentV
       }
     }
 
-    const baseUrl = process.env.COPERNICUS_MARINE_API_URL || 'https://marine-api.open-meteo.com/v1/marine';
+    const baseUrl = process.env.COPERNICUS_MARINE_URL || 'https://marine-api.open-meteo.com/v1/marine';
     const url = `${baseUrl}?latitude=${lats}&longitude=${lons}&hourly=ocean_current_velocity,ocean_current_direction,wind_speed_10m,wind_direction_10m${dateParam}`;
 
     const controller = new AbortController();
@@ -214,7 +214,7 @@ export const fetchTimelineCurrents = async (
   try {
     const lats = GRID_COORDINATES.map(c => c.lat).join(',');
     const lons = GRID_COORDINATES.map(c => c.lon).join(',');
-    const baseUrl = process.env.COPERNICUS_MARINE_API_URL || 'https://marine-api.open-meteo.com/v1/marine';
+    const baseUrl = process.env.COPERNICUS_MARINE_URL || 'https://marine-api.open-meteo.com/v1/marine';
     const url = `${baseUrl}?latitude=${lats}&longitude=${lons}&hourly=ocean_current_velocity,ocean_current_direction,wind_speed_10m,wind_direction_10m,sea_surface_temperature&start_date=${cleanStart}&end_date=${cleanEnd}`;
 
     // Parallel fetch: Open-Meteo Marine Data + INCOIS ERDDAP Argo Floats

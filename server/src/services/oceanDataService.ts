@@ -30,7 +30,7 @@ export const fetchRealOceanData = async (lats: number[], lons: number[], variabl
   // For safety and performance in this prototype, we'll try a generic bounding box fetch.
   // We use a short timeout so the UI doesn't hang if the NOAA server is slow.
   
-  const baseUrl = 'https://coastwatch.pfeg.noaa.gov/erddap/griddap';
+  const baseUrl = process.env.NOAA_GRIDDAP_URL || 'https://coastwatch.pfeg.noaa.gov/erddap/griddap';
   
   // Format time to ERDDAP ISO
   const time = new Date(timeStr || Date.now()).toISOString().split('.')[0] + 'Z'; 
@@ -61,7 +61,8 @@ export const fetchRealOceanData = async (lats: number[], lons: number[], variabl
       const timeFrom = new Date(requestedDate - 7 * 24 * 60 * 60 * 1000).toISOString().split('.')[0] + 'Z';
       const timeTo = new Date(requestedDate).toISOString().split('.')[0] + 'Z';
       
-      const url = `https://coastwatch.pfeg.noaa.gov/erddap/tabledap/nosSosSalinity.json?longitude,latitude,station_id,altitude,time,sensor_id,sea_water_salinity&longitude>=${minLon}&longitude<=${maxLon}&latitude>=${minLat}&latitude<=${maxLat}&time>=${timeFrom}&time<=${timeTo}`;
+      const tableDapBaseUrl = process.env.NOAA_TABLEDAP_URL || 'https://coastwatch.pfeg.noaa.gov/erddap/tabledap';
+      const url = `${tableDapBaseUrl}/nosSosSalinity.json?longitude,latitude,station_id,altitude,time,sensor_id,sea_water_salinity&longitude>=${minLon}&longitude<=${maxLon}&latitude>=${minLat}&latitude<=${maxLat}&time>=${timeFrom}&time<=${timeTo}`;
       
       const response = await axios.get(url, { 
         timeout: 5000,

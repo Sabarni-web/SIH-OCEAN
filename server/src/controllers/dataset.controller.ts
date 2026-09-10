@@ -194,7 +194,8 @@ export const getOceanField = async (req: Request, res: Response) => {
     if (!values && parsed.data.variable === 'chlorophyll') {
       try {
         const timeStr = new Date(parsed.data.time).toISOString().split('T')[0] + 'T12:00:00Z';
-        const url = `https://coastwatch.pfeg.noaa.gov/erddap/griddap/nesdisNPPN20S3ASCIDINEOFDaily.json?chlor_a[(${timeStr}):1:(${timeStr})][(0):1:(0.0)][(${parsed.data.maxLat}):20:(${parsed.data.minLat})][(${parsed.data.minLon}):20:(${parsed.data.maxLon})]`;
+        const baseGriddap = process.env.NOAA_GRIDDAP_URL || 'https://coastwatch.pfeg.noaa.gov/erddap/griddap';
+        const url = `${baseGriddap}/nesdisNPPN20S3ASCIDINEOFDaily.json?chlor_a[(${timeStr}):1:(${timeStr})][(0):1:(0.0)][(${parsed.data.maxLat}):20:(${parsed.data.minLat})][(${parsed.data.minLon}):20:(${parsed.data.maxLon})]`;
         
         const response = await fetch(url, {
           headers: { 'User-Agent': 'OCEAN-VISTA/1.0' }
