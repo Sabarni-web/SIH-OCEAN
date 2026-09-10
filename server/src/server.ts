@@ -13,19 +13,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Connect to MongoDB
-const mongoUri = process.env.MONGO_URI || '';
-if (mongoUri) {
-  mongoose.connect(mongoUri, {
-    serverSelectionTimeoutMS: 5000,
-    family: 4 // Force IPv4 for local DNS SRV resolution
-  })
-    .then(() => console.log('Successfully connected to MongoDB.'))
-    .catch((err) => console.error('MongoDB connection error (Operating in Demo Mode):', err.message));
-} else {
-  console.warn('MONGO_URI is not defined in the environment variables.');
-}
-
+// MongoDB connection removed - using API instead
 // Middleware
 app.use(cors());
 app.use(express.json());

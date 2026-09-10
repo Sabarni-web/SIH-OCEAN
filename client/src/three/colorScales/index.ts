@@ -100,5 +100,5 @@ export const getVariableColor = (variableId: string, value: number): THREE.Color
   const scale = COLOR_SCALES[variable.colorScale];
   if (!scale) return new THREE.Color('#ffffff');
   
-  return evaluateColor(value, variable.min, variable.max, scale);
+  return evaluateColor(value, variable.min, variable.max, scale).convertSRGBToLinear();
 };

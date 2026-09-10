@@ -303,7 +303,7 @@ export const GlobalOceanControls: React.FC = () => {
               } else {
                 const today = new Date();
                 const future = new Date(today.getTime() + 3 * 24 * 3600 * 1000);
-                // Keep datePreset as 'live' to indicate forecast mode
+                setDateFilter('live');
                 await startReplay(today.toISOString().slice(0, 10), future.toISOString().slice(0, 10));
               }
             }}

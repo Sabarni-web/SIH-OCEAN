@@ -38,7 +38,7 @@ export const WorldMapViewer: React.FC = () => {
     const cartoKey = import.meta.env.VITE_CARTO_API_KEY || '';
     const darkUrl = cartoKey
       ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`
-      : 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
 
     // CARTO Dark Matter Basemap (Authenticated)
     L.tileLayer(darkUrl, {
@@ -48,7 +48,7 @@ export const WorldMapViewer: React.FC = () => {
 
     if (!cartoKey) {
       // Add reference labels if fallback
-      L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 16,
         opacity: 0.85
       }).addTo(map);
@@ -96,7 +96,7 @@ export const WorldMapViewer: React.FC = () => {
       const cartoKey = import.meta.env.VITE_CARTO_API_KEY || '';
       const darkUrl = cartoKey
         ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`
-        : 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
 
       L.tileLayer(darkUrl, {
         maxZoom: 19,
@@ -104,7 +104,7 @@ export const WorldMapViewer: React.FC = () => {
       }).addTo(map);
 
       if (!cartoKey) {
-        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
           maxZoom: 16,
           opacity: 0.85
         }).addTo(map);

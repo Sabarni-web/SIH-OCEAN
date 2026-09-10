@@ -127,7 +127,7 @@ export const OceanMap: React.FC = () => {
         attribution: 'Esri Satellite'
       });
       // Boundaries and Places Label Overlay
-      const labelLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      const labelLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
         opacity: 0.8
       });
@@ -139,7 +139,7 @@ export const OceanMap: React.FC = () => {
       const cartoKey = import.meta.env.VITE_CARTO_API_KEY || '';
       const darkUrl = cartoKey
         ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`
-        : 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
 
       const darkLayer = L.tileLayer(darkUrl, {
         maxZoom: 19,

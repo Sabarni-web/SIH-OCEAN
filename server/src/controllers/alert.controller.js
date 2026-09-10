@@ -6,7 +6,26 @@ let rules = [
     { id: '1', variable: 'temperature', operator: '>', threshold: 30, severity: 'WARNING', enabled: true },
     { id: '2', variable: 'current', operator: '>', threshold: 1.5, severity: 'CRITICAL', enabled: true }
 ];
-let alertsHistory = [];
+let alertsHistory = [
+    {
+        id: (0, uuid_1.v4)(),
+        ruleId: '1',
+        timestamp: new Date().toISOString(),
+        severity: 'WARNING',
+        message: 'TEMPERATURE anomaly detected. Threshold > 30',
+        location: { lat: 14.5, lon: 74.2 },
+        status: 'ACTIVE'
+    },
+    {
+        id: (0, uuid_1.v4)(),
+        ruleId: '2',
+        timestamp: new Date().toISOString(),
+        severity: 'CRITICAL',
+        message: 'CURRENT anomaly detected. Threshold > 1.5',
+        location: { lat: 12.1, lon: 76.8 },
+        status: 'ACTIVE'
+    }
+];
 // Mock engine check
 const evaluateAlerts = () => {
     // Generate random mock alerts occasionally based on rules

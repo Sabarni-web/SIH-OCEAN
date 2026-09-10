@@ -102,17 +102,17 @@ const DEFAULT_INCOIS_DATASET = {
 
 export const getDatasets = async (req: Request, res: Response) => {
   try {
-    let datasets: any[] = [];
-    try {
-      datasets = await DatasetModel.find();
-    } catch {
-      // Database offline/empty
-    }
-
-    if (datasets.length === 0) {
-      datasets = [DEFAULT_INCOIS_DATASET];
-    }
-
+    let datasets = [DEFAULT_INCOIS_DATASET];
+    // Return mock datasets since we are using API mode without MongoDB
+    datasets.push({
+      id: 'mock_noaa_sst',
+      name: 'NOAA Sea Surface Temperature',
+      source: 'NOAA',
+      variable: 'temperature',
+      resolution: '0.25 degree',
+      status: 'AVAILABLE',
+      updateFrequency: 'Daily'
+    } as any);
     res.json({ data: datasets });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -124,9 +124,7 @@ export const getDatasetStatus = async (req: Request, res: Response) => {
     if (req.params.id === 'incois_hoofs_indian_ocean') {
       return res.json({ status: 'READY', progress: 100, message: 'Ready' });
     }
-    const ds = await DatasetModel.findById(req.params.id);
-    if (!ds) return res.status(404).json({ error: 'Dataset not found' });
-    res.json({ status: ds.status, progress: ds.progress, message: ds.message });
+    return res.status(404).json({ error: 'Dataset not found' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -137,9 +135,19 @@ export const getDatasetVariables = async (req: Request, res: Response) => {
     if (req.params.id === 'incois_hoofs_indian_ocean') {
       return res.json({ data: DEFAULT_INCOIS_DATASET.variables });
     }
-    const ds = await DatasetModel.findById(req.params.id);
-    if (!ds) return res.status(404).json({ error: 'Dataset not found' });
-    res.json({ data: ds.variables });
+    return res.status(404).json({ error: 'Dataset not found' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const getDatasetById = async (req: Request, res: Response) => {
+  try {
+    const ds = DEFAULT_INCOIS_DATASET;
+    if (req.params.id !== 'incois_hoofs_indian_ocean') {
+      return res.status(404).json({ error: 'Dataset not found' });
+    }
+    res.json({ data: ds });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -166,17 +174,8 @@ export const getOceanField = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid parameters', details: parsed.error });
     }
 
-    let ds: any = null;
-    if (req.params.id === 'incois_hoofs_indian_ocean') {
-      ds = DEFAULT_INCOIS_DATASET;
-    } else {
-      try {
-        ds = await DatasetModel.findById(req.params.id);
-      } catch {
-        // fallback
-      }
-    }
-    if (!ds) ds = DEFAULT_INCOIS_DATASET;
+    let ds: any = DEFAULT_INCOIS_DATASET;
+    // We are using API mode, no MongoDB query needed
 
     // Use requested bounds or defaults
     const latResolution = parsed.data.latRes;

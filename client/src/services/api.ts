@@ -109,10 +109,12 @@ export const currentsService = {
     return res.json();
   },
 
-  getTimeline: async (startDate: string, endDate: string) => {
-    const res = await fetchWithKey(
-      `${CURRENTS_API_URL}/timeline?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
-    );
+  getTimeline: async (startDate: string, endDate: string, bounds?: any) => {
+    let url = `${CURRENTS_API_URL}/timeline?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    if (bounds) {
+      url += `&minLat=${bounds.minLat}&maxLat=${bounds.maxLat}&minLon=${bounds.minLon}&maxLon=${bounds.maxLon}`;
+    }
+    const res = await fetchWithKey(url);
     if (!res.ok) throw new Error('Failed to fetch currents timeline');
     return res.json();
   }

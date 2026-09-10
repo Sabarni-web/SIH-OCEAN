@@ -57,6 +57,7 @@ export const useOceanStore = create<OceanState>((set, get) => ({
   setSelectedRegion: (region) => set({ selectedRegion: region }),
   viewBounds: { minLat: -30, maxLat: 30, minLon: 40, maxLon: 110, latRes: 2, lonRes: 2 },
   setViewBounds: (bounds) => set({ viewBounds: bounds }),
+
   selectedVariable: 'temperature',
   setSelectedVariable: (variable) => set({ selectedVariable: variable }),
 
